@@ -78,6 +78,8 @@ class LearningApp {
         if (nextQuestionBtn) nextQuestionBtn.addEventListener('click', () => this.nextQuestion());
         if (submitTestBtn) submitTestBtn.addEventListener('click', () => this.submitTest());
         if (refreshLogsBtn) refreshLogsBtn.addEventListener('click', () => this.loadLogs());
+        const refreshStudentResultsBtn = document.getElementById('refresh-student-results-btn');
+        if (refreshStudentResultsBtn) refreshStudentResultsBtn.addEventListener('click', () => this.loadStudentResults());
         if (solveEquationBtn) solveEquationBtn.addEventListener('click', () => this.solveEquation());
         if (clearCalculatorBtn) clearCalculatorBtn.addEventListener('click', () => this.clearCalculator());
         
@@ -86,6 +88,8 @@ class LearningApp {
         const logTypeFilter = document.getElementById('log-type-filter');
         if (logUserFilter) logUserFilter.addEventListener('change', () => this.loadLogs());
         if (logTypeFilter) logTypeFilter.addEventListener('change', () => this.loadLogs());
+        const courseFilter = document.getElementById('course-filter');
+        if (courseFilter) courseFilter.addEventListener('change', () => this.loadStudentResults());
         
         // Модальное окно
         const modalClose = document.querySelector('.modal-close');
@@ -188,6 +192,13 @@ class LearningApp {
             item.style.display = isAdmin ? 'flex' : 'none';
         });
         
+        // Показываем/скрываем пункты меню для преподавателей
+        const teacherItems = document.querySelectorAll('.teacher-only');
+        const isTeacher = DataManager.hasRole('teacher');
+        teacherItems.forEach(item => {
+            item.style.display = isTeacher ? 'flex' : 'none';
+        });
+        
         // Загружаем контент
         this.navigate('dashboard');
     }
@@ -238,6 +249,9 @@ class LearningApp {
                 break;
             case 'calculator':
                 this.loadCalculator();
+                break;
+            case 'student-results':
+                this.loadStudentResults();
                 break;
             case 'users':
                 this.loadUsers();
@@ -698,6 +712,134 @@ class LearningApp {
         document.getElementById('coef-b').value = '-5';
         document.getElementById('coef-c').value = '6';
         document.getElementById('solution-result').style.display = 'none';
+    }
+    
+    // Загрузка результатов учеников (для преподавателей)
+    loadStudentResults() {
+        const user = DataManager.getCurrentUser();
+        const resultsContent = document.getElementById('student-results-content');
+        const courseFilter = document.getElementById('course-filter');
+        
+        // Заполняем фильтр курсов
+        if (courseFilter.options.length === 1) {
+            const courses = DataManager.getCourses();
+            courses.forEach(course => {
+                const option = document.createElement('option');
+                option.value = course.id;
+                option.textContent = course.title;
+                courseFilter.appendChild(option);
+            });
+        }
+        
+        const selectedCourseId = courseFilter.value === 'all' ? null : parseInt(courseFilter.value);
+        
+        // Получаем всех слушателей
+        const allUsers = DataManager.getAllUsers();
+        const listeners = allUsers.filter(u => u.role === 'listener');
+        
+        if (listeners.length === 0) {
+            resultsContent.innerHTML = '<p>Нет зарегистрированных слушателей.</p>';
+            return;
+        }
+        
+        // Фильтруем по курсу если выбран
+        const filteredListeners = selectedCourseId 
+            ? listeners.filter(u => u.enrolledCourses.includes(selectedCourseId))
+            : listeners;
+        
+        if (filteredListeners.length === 0) {
+            resultsContent.innerHTML = '<p>Нет слушателей, записанных на этот курс.</p>';
+            return;
+        }
+        
+        // Показываем результаты
+        const courses = DataManager.getCourses();
+        
+        const html = filteredListeners.map(listener => {
+            // Находим полного пользователя с данными
+            const fullUser = DataManager.data.users.find(u => u.id === listener.id);
+            if (!fullUser || !fullUser.testResults || fullUser.testResults.length === 0) {
+                return `
+                    <div class="student-card">
+                        <h4>${listener.username} <span style="font-size: 14px; color: #666;">(не проходил тестирование)</span></h4>
+                        <div class="student-info">
+                            <span>Роль: ${listener.roleName}</span>
+                            <span>Курсов: ${listener.enrolledCourses}</span>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Группируем результаты по курсам
+            const resultsByCourse = {};
+            fullUser.testResults.forEach(result => {
+                // Находим курс по testId
+                const course = courses.find(c => c.testId === result.testId);
+                if (course) {
+                    if (!resultsByCourse[course.id]) {
+                        resultsByCourse[course.id] = [];
+                    }
+                    resultsByCourse[course.id].push(result);
+                }
+            });
+            
+            // Фильтруем по выбранному курсу
+            let courseResults = [];
+            if (selectedCourseId) {
+                if (resultsByCourse[selectedCourseId]) {
+                    courseResults = [{
+                        courseId: selectedCourseId,
+                        courseTitle: courses.find(c => c.id === selectedCourseId)?.title || 'Курс',
+                        results: resultsByCourse[selectedCourseId]
+                    }];
+                }
+            } else {
+                courseResults = Object.keys(resultsByCourse).map(courseId => ({
+                    courseId: parseInt(courseId),
+                    courseTitle: courses.find(c => c.id === parseInt(courseId))?.title || 'Курс',
+                    results: resultsByCourse[courseId]
+                }));
+            }
+            
+            // Считаем средний балл
+            const allPercentages = fullUser.testResults.map(r => r.percentage);
+            const avgScore = allPercentages.length > 0 
+                ? Math.round(allPercentages.reduce((a, b) => a + b, 0) / allPercentages.length)
+                : 0;
+            
+            // Определяем цвет среднего балла
+            let avgColor = avgScore >= 80 ? '#28a745' : avgScore >= 60 ? '#17a2b8' : avgScore >= 40 ? '#ffc107' : '#dc3545';
+            
+            return `
+                <div class="student-card">
+                    <h4>${listener.username} <span style="font-size: 18px; color: ${avgColor};">Средний балл: ${avgScore}%</span></h4>
+                    <div class="student-info">
+                        <span>Роль: ${listener.roleName}</span>
+                        <span>Записан на курсов: ${listener.enrolledCourses}</span>
+                        <span>Пройдено тестов: ${fullUser.testResults.length}</span>
+                    </div>
+                    <div class="results-by-course">
+            ` + courseResults.map(cr => `
+                        <div class="course-result">
+                            <h5>${cr.courseTitle}</h5>
+                            ${cr.results.map(r => `
+                                <div style="background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                                    <div class="result-score" style="color: ${r.percentage >= 60 ? '#28a745' : '#dc3545'};">${r.percentage}%</div>
+                                    <div class="result-details">
+                                        <span>Правильных: ${r.correctAnswers}/${r.totalQuestions}</span>
+                                        <span>Дата: ${new Date(r.timestamp).toLocaleDateString('ru-RU')}</span>
+                                        <span>Время: ${new Date(r.timestamp).toLocaleTimeString('ru-RU')}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+            `).join('') + `
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        resultsContent.innerHTML = html;
     }
     
     // Решение квадратного уравнения

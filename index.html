@@ -68,11 +68,15 @@
                     </li>
                     <li class="nav-item" data-section="results" id="nav-results">
                         <span class="nav-icon">📈</span>
-                        <span>Результаты</span>
+                        <span>Мои результаты</span>
                     </li>
                     <li class="nav-item" data-section="calculator" id="nav-calculator">
                         <span class="nav-icon">🧮</span>
                         <span>Калькулятор уравнений</span>
+                    </li>
+                    <li class="nav-item teacher-only" data-section="student-results" id="nav-student-results">
+                        <span class="nav-icon">📊</span>
+                        <span>Результаты учеников</span>
                     </li>
                     <li class="nav-item admin-only" data-section="users" id="nav-users">
                         <span class="nav-icon">👥</span>
@@ -194,6 +198,20 @@
                             <div id="solution-content"></div>
                         </div>
                     </div>
+                </section>
+
+                <!-- Секция: Результаты учеников (преподаватель) -->
+                <section id="section-student-results" class="content-section">
+                    <h2>Результаты тестирования учеников</h2>
+                    <div class="student-results-filters">
+                        <label>Фильтр по курсу:
+                            <select id="course-filter">
+                                <option value="all">Все курсы</option>
+                            </select>
+                        </label>
+                        <button id="refresh-student-results-btn" class="btn btn-secondary">Обновить</button>
+                    </div>
+                    <div id="student-results-content"></div>
                 </section>
 
                 <!-- Секция: Пользователи (админ) -->
