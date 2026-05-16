@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система Дистанционного Обучения</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Экран аутентификации -->
+        <div id="auth-screen" class="screen active">
+            <div class="auth-container">
+                <h1>Система Дистанционного Обучения</h1>
+                <div class="auth-box">
+                    <h2>Вход в систему</h2>
+                    <form id="login-form">
+                        <div class="form-group">
+                            <label for="username">Имя пользователя:</label>
+                            <input type="text" id="username" required placeholder="Введите имя пользователя">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Пароль:</label>
+                            <input type="password" id="password" required placeholder="Введите пароль">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Войти</button>
+                    </form>
+                    <div class="auth-hint">
+                        <p><strong>Демо-учётные данные:</strong></p>
+                        <p>Слушатель: listener / listener123</p>
+                        <p>Преподаватель: teacher / teacher123</p>
+                        <p>Разработчик: developer / developer123</p>
+                        <p>Техподдержка: support / support123</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Главный экран после входа -->
+        <div id="main-screen" class="screen">
+            <header class="header">
+                <div class="header-left">
+                    <h1>Система Дистанционного Обучения</h1>
+                </div>
+                <div class="header-right">
+                    <span id="user-info"></span>
+                    <button id="logout-btn" class="btn btn-secondary">Выйти</button>
+                </div>
+            </header>
+
+            <nav class="sidebar">
+                <ul class="nav-menu">
+                    <li class="nav-item active" data-section="dashboard">
+                        <span class="nav-icon">📊</span>
+                        <span>Главная</span>
+                    </li>
+                    <li class="nav-item" data-section="courses" id="nav-courses">
+                        <span class="nav-icon">📚</span>
+                        <span>Курсы</span>
+                    </li>
+                    <li class="nav-item" data-section="learning" id="nav-learning">
+                        <span class="nav-icon">📖</span>
+                        <span>Изучение материала</span>
+                    </li>
+                    <li class="nav-item" data-section="tests" id="nav-tests">
+                        <span class="nav-icon">✍️</span>
+                        <span>Тестирование</span>
+                    </li>
+                    <li class="nav-item" data-section="results" id="nav-results">
+                        <span class="nav-icon">📈</span>
+                        <span>Результаты</span>
+                    </li>
+                    <li class="nav-item" data-section="calculator" id="nav-calculator">
+                        <span class="nav-icon">🧮</span>
+                        <span>Калькулятор уравнений</span>
+                    </li>
+                    <li class="nav-item admin-only" data-section="users" id="nav-users">
+                        <span class="nav-icon">👥</span>
+                        <span>Пользователи</span>
+                    </li>
+                    <li class="nav-item admin-only" data-section="logs" id="nav-logs">
+                        <span class="nav-icon">📋</span>
+                        <span>Журнал событий</span>
+                    </li>
+                </ul>
+            </nav>
+
+            <main class="content">
+                <!-- Секция: Главная -->
+                <section id="section-dashboard" class="content-section active">
+                    <h2>Добро пожаловать в систему!</h2>
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <h3>📚 Доступные курсы</h3>
+                            <p id="courses-count">Загрузка...</p>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>✅ Пройденные тесты</h3>
+                            <p id="tests-completed">Загрузка...</p>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>📊 Средний балл</h3>
+                            <p id="average-score">Загрузка...</p>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3>⏱️ Время в системе</h3>
+                            <p id="time-spent">Загрузка...</p>
+                        </div>
+                    </div>
+                    <div class="welcome-message">
+                        <h3>Курс: Решение квадратных уравнений</h3>
+                        <p>Изучите теорию, решите примеры и пройдите тестирование для закрепления материала.</p>
+                    </div>
+                </section>
+
+                <!-- Секция: Курсы -->
+                <section id="section-courses" class="content-section">
+                    <h2>Доступные курсы</h2>
+                    <div id="courses-list"></div>
+                </section>
+
+                <!-- Секция: Изучение материала -->
+                <section id="section-learning" class="content-section">
+                    <h2>Материал курса: Решение квадратных уравнений</h2>
+                    <div class="learning-container">
+                        <div class="learning-nav">
+                            <button class="btn btn-secondary" id="prev-topic">← Назад</button>
+                            <span id="topic-progress">1/5</span>
+                            <button class="btn btn-secondary" id="next-topic">Вперёд →</button>
+                        </div>
+                        <div id="learning-content"></div>
+                        <button id="complete-learning-btn" class="btn btn-success" style="display: none;">
+                            Завершить изучение материала
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Секция: Тестирование -->
+                <section id="section-tests" class="content-section">
+                    <h2>Тестирование по теме: Квадратные уравнения</h2>
+                    <div id="test-intro">
+                        <p>Вам предстоит ответить на 10 вопросов. На тестирование отводится 30 минут.</p>
+                        <button id="start-test-btn" class="btn btn-primary">Начать тестирование</button>
+                    </div>
+                    <div id="test-container" style="display: none;">
+                        <div class="test-header">
+                            <span id="timer"></span>
+                            <span id="question-progress"></span>
+                        </div>
+                        <div id="question-container"></div>
+                        <div class="test-navigation">
+                            <button id="prev-question-btn" class="btn btn-secondary" disabled>← Предыдущий вопрос</button>
+                            <button id="next-question-btn" class="btn btn-primary">Следующий вопрос →</button>
+                            <button id="submit-test-btn" class="btn btn-success" style="display: none;">Завершить тест</button>
+                        </div>
+                    </div>
+                    <div id="test-results" style="display: none;">
+                        <h3>Результаты тестирования</h3>
+                        <div class="results-summary"></div>
+                    </div>
+                </section>
+
+                <!-- Секция: Результаты -->
+                <section id="section-results" class="content-section">
+                    <h2>Мои результаты</h2>
+                    <div id="results-content"></div>
+                </section>
+
+                <!-- Секция: Калькулятор уравнений -->
+                <section id="section-calculator" class="content-section">
+                    <h2>Калькулятор квадратных уравнений</h2>
+                    <div class="calculator-container">
+                        <div class="calculator-form">
+                            <h3>Решить уравнение вида: ax² + bx + c = 0</h3>
+                            <div class="equation-input">
+                                <div class="input-group">
+                                    <label>a =</label>
+                                    <input type="number" id="coef-a" value="1" step="any">
+                                </div>
+                                <div class="input-group">
+                                    <label>b =</label>
+                                    <input type="number" id="coef-b" value="-5" step="any">
+                                </div>
+                                <div class="input-group">
+                                    <label>c =</label>
+                                    <input type="number" id="coef-c" value="6" step="any">
+                                </div>
+                            </div>
+                            <button id="solve-equation-btn" class="btn btn-primary">Решить уравнение</button>
+                            <button id="clear-calculator-btn" class="btn btn-secondary">Очистить</button>
+                        </div>
+                        <div id="solution-result" class="solution-result" style="display: none;">
+                            <h3>Решение:</h3>
+                            <div id="solution-content"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Секция: Пользователи (админ) -->
+                <section id="section-users" class="content-section">
+                    <h2>Управление пользователями</h2>
+                    <div id="users-list"></div>
+                </section>
+
+                <!-- Секция: Журнал событий (админ) -->
+                <section id="section-logs" class="content-section">
+                    <h2>Журнал событий</h2>
+                    <div class="logs-filters">
+                        <label>Фильтр по пользователю:
+                            <select id="log-user-filter">
+                                <option value="all">Все пользователи</option>
+                            </select>
+                        </label>
+                        <label>Тип события:
+                            <select id="log-type-filter">
+                                <option value="all">Все типы</option>
+                                <option value="login">Вход</option>
+                                <option value="logout">Выход</option>
+                                <option value="enroll">Запись на курс</option>
+                                <option value="learning">Изучение материала</option>
+                                <option value="test">Тестирование</option>
+                            </select>
+                        </label>
+                        <button id="refresh-logs-btn" class="btn btn-secondary">Обновить</button>
+                    </div>
+                    <div id="logs-content"></div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Модальное окно -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
