@@ -15,9 +15,12 @@ class LearningApp {
     }
     
     async init() {
+        console.log('=== init called ===');
         await DataManager.loadData();
+        console.log('loadData completed, currentUser:', DataManager.getCurrentUser());
         this.setupEventListeners();
-        this.checkSession();
+        // Сначала проверяем сессию
+        await this.checkSession();
     }
     
     // Настройка обработчиков событий
@@ -104,32 +107,62 @@ class LearningApp {
     
     // Проверка активной сессии
     async checkSession() {
+        console.log('=== checkSession called ===');
+        console.log('currentUser before check:', DataManager.getCurrentUser());
         const user = DataManager.getCurrentUser();
         if (user) {
+            console.log('User is logged in:', user.username);
+            console.log('showing main screen');
             this.showMainScreen();
         } else {
+            console.log('No user logged in');
+            console.log('showing auth screen');
             this.showAuthScreen();
         }
     }
-    
+        
     // Обработка входа
     async handleLogin() {
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const username = usernameInput.value;
+        const password = passwordInput.value;
+        
+        console.log('=== handleLogin called ===');
+        console.log('Username input value:', username);
+        console.log('Password input value:', password);
+        console.log('All users in data:', DataManager.data.users.map(u => u.username));
         
         const user = await DataManager.authenticate(username, password);
         
+        console.log('After authenticate, currentUser:', DataManager.getCurrentUser());
+        
         if (user) {
+            console.log('Login successful for user:', user.username, 'Role:', user.role);
             // Обновляем время входа
             DataManager.updateUser({ lastLogin: new Date().toISOString() });
-            // Полностью скрываем экран аутентификации и показываем главный
-            this.hideAuthScreen();
-            this.showMainScreen();
+            console.log('After updateUser, currentUser:', DataManager.getCurrentUser());
+            
+            // Явно переключаем экраны через style
+            const authScreen = document.getElementById('auth-screen');
+            const mainScreen = document.getElementById('main-screen');
+            
+            if (authScreen) {
+                authScreen.style.display = 'none';
+                authScreen.classList.remove('active');
+            }
+            
+            if (mainScreen) {
+                mainScreen.style.display = 'block';
+                mainScreen.classList.add('active');
+            }
+            
+            console.log('Screens switched, mainScreen display:', mainScreen.style.display);
         } else {
             alert('Неверное имя пользователя или пароль!');
         }
     }
-    
+        
     // Обработка выхода
     async handleLogout() {
         console.log('handleLogout вызван');
@@ -140,8 +173,22 @@ class LearningApp {
             }
             // Затем выполняем выход
             await DataManager.logout();
-            console.log('Выход выполнен, показываем экран входа');
-            this.showAuthScreen();
+            console.log('Выход выполнен');
+            
+            // Явно переключаем экраны
+            const authScreen = document.getElementById('auth-screen');
+            const mainScreen = document.getElementById('main-screen');
+            
+            if (authScreen) {
+                authScreen.style.display = 'flex';
+                authScreen.classList.add('active');
+            }
+            
+            if (mainScreen) {
+                mainScreen.style.display = 'none';
+                mainScreen.classList.remove('active');
+            }
+            
             document.getElementById('login-form').reset();
         } catch (error) {
             console.error('Ошибка при выходе:', error);
@@ -150,8 +197,20 @@ class LearningApp {
     
     // Показ экрана аутентификации
     showAuthScreen() {
-        document.getElementById('auth-screen').classList.add('active');
-        document.getElementById('main-screen').classList.remove('active');
+        console.log('showAuthScreen called');
+        const authScreen = document.getElementById('auth-screen');
+        const mainScreen = document.getElementById('main-screen');
+        
+        if (authScreen) {
+            authScreen.style.display = 'flex';
+            authScreen.classList.add('active');
+        }
+        
+        if (mainScreen) {
+            mainScreen.style.display = 'none';
+            mainScreen.classList.remove('active');
+        }
+        console.log('authScreen displayed, mainScreen hidden');
     }
     
     // Скрытие экрана аутентификации
@@ -161,29 +220,18 @@ class LearningApp {
     
     // Показ главного экрана
     showMainScreen() {
+        console.log('showMainScreen called');
         const user = DataManager.getCurrentUser();
-        if (!user) return;
-        
-        // Явно скрываем экран аутентификации
-        document.getElementById('auth-screen').classList.remove('active');
-        document.getElementById('main-screen').classList.add('active');
+        if (!user) {
+            console.log('showMainScreen: no user, returning');
+            return;
+        }
+        console.log('showMainScreen: showing screen for user', user.username, 'role:', user.role);
         
         // Обновляем информацию о пользователе
         document.getElementById('user-info').innerHTML = `
             <strong>${user.username}</strong> (${user.roleName})
         `;
-        
-        // Переподключаем обработчик для кнопки выхода после показа экрана
-        setTimeout(() => {
-            const logoutBtn = document.getElementById('logout-btn');
-            if (logoutBtn) {
-                logoutBtn.addEventListener('click', (e) => {
-                    console.log('Кнопка выхода активна');
-                    e.stopPropagation();
-                    this.handleLogout();
-                });
-            }
-        }, 100);
         
         // Показываем/скрываем админские пункты меню
         const adminItems = document.querySelectorAll('.admin-only');
@@ -199,8 +247,19 @@ class LearningApp {
             item.style.display = isTeacher ? 'flex' : 'none';
         });
         
+        // Показываем/скрываем пункты меню только для слушателей
+        const studentItems = document.querySelectorAll('.student-only');
+        const isStudent = DataManager.hasRole('listener');
+        studentItems.forEach(item => {
+            item.style.display = isStudent ? 'flex' : 'none';
+        });
+        
+        // Обновляем видимость пунктов меню, требующих записанных курсов
+        this.updateMenuVisibility();
+        
         // Загружаем контент
         this.navigate('dashboard');
+        console.log('showMainScreen completed');
     }
     
     // Навигация по секциям
@@ -312,15 +371,50 @@ class LearningApp {
             return;
         }
         
+        console.log('Enrolling user to course:', courseId);
         const success = await DataManager.enrollCourse(courseId);
+        
+        console.log('Enrollment result:', success);
+        console.log('Current user after enrollment:', DataManager.getCurrentUser());
+        console.log('Enrolled courses:', DataManager.getCurrentUser().enrolledCourses);
+        
         if (success) {
             alert('Вы успешно записаны на курс!');
             this.loadCourses();
-            // После успешной записи переходим к изучению
+            // После успешной записи перерисовываем меню
+            this.updateMenuVisibility();
+            // Переходим к изучению
             this.navigate('learning');
         } else {
             alert('Ошибка записи на курс');
         }
+    }
+        
+    // Обновление видимости пунктов меню
+    updateMenuVisibility() {
+        const user = DataManager.getCurrentUser();
+        if (!user) return;
+        
+        // Не скрываем разделы для преподавателей и админов
+        if (user.role !== 'listener') {
+            return;
+        }
+        
+        console.log('updateMenuVisibility called for user:', user.username);
+        console.log('User enrolledCourses:', user.enrolledCourses);
+        
+        const hasCourses = user.enrolledCourses && user.enrolledCourses.length > 0;
+        console.log('Has courses:', hasCourses);
+        
+        // Скрываем/показываем разделы, требующие записанных курсов
+        const courseRequiredIds = ['nav-learning', 'nav-tests', 'nav-results'];
+        courseRequiredIds.forEach(id => {
+            const item = document.getElementById(id);
+            if (item) {
+                item.style.display = hasCourses ? 'flex' : 'none';
+                console.log('Setting display for', id, 'to', hasCourses ? 'flex' : 'none');
+            }
+        });
     }
         
     // Загрузка материала для изучения

@@ -9,29 +9,57 @@ const DataManager = {
     
     // Загрузка данных из JSON
     async loadData() {
+        console.log('=== loadData called ===');
+        console.log('Before loadData, this.currentUser:', this.currentUser);
+        
         try {
-            const response = await fetch('data.json');
-            this.data = await response.json();
-            
-            // Восстановление данных из localStorage если есть
+            // Сначала проверяем, есть ли сохранённые данные в localStorage
             const storedData = localStorage.getItem('ls_data');
-            if (storedData) {
-                const parsed = JSON.parse(storedData);
-                this.data.users = parsed.users || this.data.users;
-                this.data.logs = parsed.logs || this.data.logs;
-            }
-            
-            // Восстановление текущей сессии
             const storedUser = localStorage.getItem('ls_currentUser');
+            
+            console.log('storedData exists:', !!storedData);
+            console.log('storedUser exists:', !!storedUser);
             if (storedUser) {
-                const parsedUser = JSON.parse(storedUser);
-                // Находим пользователя в обновлённом списке
-                const currentUserFromData = this.data.users.find(u => u.id === parsedUser.id);
-                if (currentUserFromData) {
-                    this.currentUser = currentUserFromData;
-                }
+                console.log('storedUser content:', JSON.parse(storedUser));
             }
             
+            if (storedData) {
+                console.log('Loading from localStorage...');
+                const parsed = JSON.parse(storedData);
+                this.data = parsed;
+                console.log('Loaded users from localStorage:', this.data.users.map(u => ({username: u.username, enrolledCourses: u.enrolledCourses})));
+                
+                // Если есть сохранённая сессия, синхронизируем currentUser с загруженными данными
+                if (storedUser) {
+                    try {
+                        const parsedUser = JSON.parse(storedUser);
+                        console.log('Found stored user in localStorage:', parsedUser.username);
+                        console.log('storedUser enrolledCourses:', parsedUser.enrolledCourses);
+                        // Находим пользователя в загруженных данных и обновляем currentUser
+                        const currentUserFromData = this.data.users.find(u => u.id === parsedUser.id);
+                        if (currentUserFromData) {
+                            console.log('currentUserFromData enrolledCourses:', currentUserFromData.enrolledCourses);
+                            // Объединяем данные: приоритет у данных из ls_currentUser (они актуальнее)
+                            this.currentUser = { ...currentUserFromData, ...parsedUser };
+                            console.log('Synced currentUser:', this.currentUser.username);
+                            console.log('Final enrolledCourses:', this.currentUser.enrolledCourses);
+                        }
+                    } catch (e) {
+                        console.error('Error parsing stored user:', e);
+                    }
+                }
+            } else {
+                console.log('No localStorage data, loading from data.json...');
+                const response = await fetch('data.json');
+                this.data = await response.json();
+                console.log('Loaded users from data.json:', this.data.users.map(u => u.username));
+            }
+            
+            console.log('=== loadData completed ===');
+            console.log('After loadData, this.currentUser:', this.currentUser ? this.currentUser.username : 'null');
+            if (this.currentUser) {
+                console.log('currentUser enrolledCourses:', this.currentUser.enrolledCourses);
+            }
             return this.data;
         } catch (error) {
             console.error('Ошибка загрузки данных:', error);
@@ -43,10 +71,24 @@ const DataManager = {
     
     // Сохранение данных в localStorage
     saveData() {
-        localStorage.setItem('ls_data', JSON.stringify({
+        const dataToSave = {
             users: this.data.users,
-            logs: this.data.logs
-        }));
+            courses: this.data.courses,
+            topics: this.data.topics,
+            tests: this.data.tests,
+            logs: this.data.logs,
+            settings: this.data.settings
+        };
+        console.log('saveData: saving data with users:', dataToSave.users.map(u => ({username: u.username, enrolledCourses: u.enrolledCourses})));
+        localStorage.setItem('ls_data', JSON.stringify(dataToSave));
+        console.log('saveData: data saved to localStorage');
+        
+        // Проверка: читаем обратно и выводим
+        const saved = localStorage.getItem('ls_data');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            console.log('saveData: verified saved data, users:', parsed.users.map(u => ({username: u.username, enrolledCourses: u.enrolledCourses})));
+        }
     },
     
     // Получение данных по умолчанию
@@ -108,14 +150,29 @@ const DataManager = {
     
     // Аутентификация пользователя
     async authenticate(username, password) {
+        // Полностью сбрасываем текущую сессию перед новой аутентификацией
+        console.log('authenticate: resetting session');
+        this.currentUser = null;
+        localStorage.removeItem('ls_currentUser');
+        
+        console.log('authenticate called with username:', username);
+        
         const user = this.data.users.find(u => u.username === username && u.password === password);
+        console.log('Found user:', user ? user.username : null);
         
         if (user) {
-            this.currentUser = user;
+            // Делаем глубокую копию пользователя из текущих данных
+            this.currentUser = JSON.parse(JSON.stringify(user));
+            console.log('currentUser set to:', this.currentUser.username, 'Role:', this.currentUser.role);
+            console.log('currentUser before save:', this.currentUser);
+            
             // Сохраняем сессию в localStorage
-            localStorage.setItem('ls_currentUser', JSON.stringify(user));
+            localStorage.setItem('ls_currentUser', JSON.stringify(this.currentUser));
+            console.log('Session saved to localStorage');
+            console.log('ls_currentUser after save:', JSON.parse(localStorage.getItem('ls_currentUser')));
+            
             await this.logAction('login', 'Вход в систему');
-            return user;
+            return this.currentUser;
         }
         return null;
     },
@@ -123,16 +180,23 @@ const DataManager = {
     // Выход пользователя
     async logout() {
         if (this.currentUser) {
+            console.log('logout: currentUser =', this.currentUser.username);
             await this.logAction('logout', 'Выход из системы');
-            this.currentUser = null;
-            // Удаляем сессию из localStorage
-            localStorage.removeItem('ls_currentUser');
         }
+        this.currentUser = null;
+        // Удаляем сессию из localStorage
+        localStorage.removeItem('ls_currentUser');
+        console.log('logout: session cleared');
     },
     
     // Регистрация нового действия в логе
     async logAction(action, description) {
-        if (!this.currentUser) return;
+        if (!this.currentUser) {
+            console.error('logAction: currentUser is null!');
+            return;
+        }
+        
+        console.log('logAction: currentUser.id =', this.currentUser.id, 'username =', this.currentUser.username);
         
         const logEntry = {
             id: this.data.logs.length + 1,
@@ -150,30 +214,55 @@ const DataManager = {
     
     // Обновление информации о пользователе
     updateUser(updatedData) {
+        if (!this.currentUser) {
+            console.error('updateUser: currentUser is null!');
+            return;
+        }
+        
+        console.log('updateUser called for user:', this.currentUser.username, 'updating:', updatedData);
+        console.log('Before update, currentUser.enrolledCourses:', this.currentUser.enrolledCourses);
+        
         const index = this.data.users.findIndex(u => u.id === this.currentUser.id);
         if (index !== -1) {
             this.data.users[index] = { ...this.data.users[index], ...updatedData };
-            this.currentUser = this.data.users[index];
+            this.currentUser = { ...this.currentUser, ...updatedData };
             // Обновляем сессию в localStorage
             localStorage.setItem('ls_currentUser', JSON.stringify(this.currentUser));
+            console.log('After updateUser, currentUser.enrolledCourses:', this.currentUser.enrolledCourses);
+            console.log('Saved ls_currentUser:', JSON.parse(localStorage.getItem('ls_currentUser')));
             this.saveData();
+            console.log('updateUser completed, currentUser:', this.currentUser);
+        } else {
+            console.error('updateUser: user not found in data!');
         }
     },
     
     // Запись на курс
     async enrollCourse(courseId) {
-        if (!this.currentUser) return false;
+        if (!this.currentUser) {
+            console.error('enrollCourse: currentUser is null!');
+            return false;
+        }
+        
+        console.log('enrollCourse called for user:', this.currentUser.username, 'courseId:', courseId);
+        console.log('Current enrolledCourses:', this.currentUser.enrolledCourses);
         
         const course = this.data.courses.find(c => c.id === courseId);
-        if (!course) return false;
+        if (!course) {
+            console.error('enrollCourse: course not found!');
+            return false;
+        }
         
         if (!this.currentUser.enrolledCourses.includes(courseId)) {
             this.currentUser.enrolledCourses.push(courseId);
+            console.log('Added course to enrolledCourses:', this.currentUser.enrolledCourses);
             await this.logAction('enroll', `Запись на курс: ${course.title}`);
             this.updateUser({ enrolledCourses: this.currentUser.enrolledCourses });
+            return true;
         }
         
-        return true;
+        console.log('User already enrolled in this course');
+        return true; // Уже записан
     },
     
     // Обновление прогресса изучения темы
