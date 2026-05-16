@@ -303,10 +303,21 @@ class LearningApp {
     
     // Запись на курс
     async enrollToCourse(courseId) {
+        const user = DataManager.getCurrentUser();
+        
+        // Проверяем, уже ли записан пользователь
+        if (user.enrolledCourses.includes(courseId)) {
+            // Если уже записан - переходим к изучению
+            this.navigate('learning');
+            return;
+        }
+        
         const success = await DataManager.enrollCourse(courseId);
         if (success) {
             alert('Вы успешно записаны на курс!');
             this.loadCourses();
+            // После успешной записи переходим к изучению
+            this.navigate('learning');
         } else {
             alert('Ошибка записи на курс');
         }
