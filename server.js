@@ -106,7 +106,31 @@ if (userCount.count === 0) {
 const courseCount = db.prepare('SELECT COUNT(*) as count FROM courses').get();
 if (courseCount.count === 0) {
   console.log('Инициализация курсов...');
-  // Данные курсов будут загружены из data.json при первом запуске
+  
+  // Добавляем курс
+  db.prepare(`
+    INSERT INTO courses (id, title, description, instructor, duration, testId)
+    VALUES (1, 'Решение квадратных уравнений', 'Полный курс по решению квадратных уравнений в общем виде. Изучите теорию, формулы и методы решения.', 'Преподаватель математики', '2 часа', 1)
+  `).run();
+  
+  // Добавляем темы курса
+  db.prepare(`
+    INSERT INTO topics (id, courseId, orderNum, title, content)
+    VALUES 
+    (1, 1, 1, 'Введение в квадратные уравнения', '<h3>Что такое квадратное уравнение?</h3><p><strong>Квадратное уравнение</strong> — это уравнение вида <strong>ax² + bx + c = 0</strong>, где a ≠ 0.</p>'),
+    (2, 1, 2, 'Дискриминант', '<h3>Формула дискриминанта</h3><p><strong>Дискриминант</strong> (обозначается D) — это величина, которая определяет количество корней квадратного уравнения.</p><p style="font-size: 18px; font-weight: bold; text-align: center; background: #f0f0f0; padding: 10px; border-radius: 5px;">D = b² - 4ac</p>'),
+    (3, 1, 3, 'Формулы корней', '<h3>Нахождение корней квадратного уравнения</h3><p style="font-size: 18px; text-align: center; background: #f0f0f0; padding: 10px; border-radius: 5px;">x₁,₂ = (-b ± √D) / 2a</p>'),
+    (4, 1, 4, 'Теорема Виета', '<h3>Теорема Виета</h3><p>Для приведённого квадратного уравнения <strong>x² + px + q = 0</strong>: x₁ + x₂ = -p, x₁ · x₂ = q</p>'),
+    (5, 1, 5, 'Практика', '<h3>Практические задания</h3><p>Решите следующие квадратные уравнения:</p><ol><li>x² - 5x + 6 = 0</li><li>x² - 7x + 12 = 0</li><li>2x² + 7x - 4 = 0</li></ol>')
+  `).run();
+  
+  // Добавляем тест
+  db.prepare(`
+    INSERT INTO tests (id, courseId, duration)
+    VALUES (1, 1, 60)
+  `).run();
+  
+  console.log('Курс, темы и тест созданы');
 }
 
 // ==================== API ROUTES ====================

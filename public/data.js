@@ -8,44 +8,25 @@ const DataManager = {
     
     // Инициализация - проверка сессии
     async init() {
-        console.log('=== DataManager.init called ===');
-        
         // Проверка сессии при загрузке
         const storedUser = localStorage.getItem('ls_currentUser');
-        console.log('storedUser from localStorage:', storedUser);
         
         if (storedUser) {
             try {
                 const parsedUser = JSON.parse(storedUser);
-                console.log('Found stored user:', parsedUser.username, 'id:', parsedUser.id);
                 
                 // Проверяем, что пользователь ещё в системе
-                const user = await this.fetchUser(parsedUser.id);
-                console.log('Fetched user from API:', user ? user.username : 'null');
-                
-                if (user) {
+                const response = await fetch(`/api/user/${parsedUser.id}`);
+                if (response.ok) {
+                    const user = await response.json();
                     this.currentUser = user;
                     console.log('Session restored for user:', user.username);
-                    console.log('currentUser set to:', this.currentUser);
-                } else {
-                    console.log('User no longer exists, clearing session');
-                    localStorage.removeItem('ls_currentUser');
-                    this.currentUser = null;
                 }
-            } catch (e) {
-                console.error('Error parsing stored user:', e);
+            } catch (error) {
+                console.error('Error restoring session:', error);
                 localStorage.removeItem('ls_currentUser');
-                this.currentUser = null;
             }
-        } else {
-            console.log('No stored user in localStorage');
-            this.currentUser = null;
         }
-        
-        console.log('=== DataManager.init completed ===');
-        console.log('Final currentUser:', this.currentUser ? this.currentUser.username : 'null');
-        
-        return this.currentUser;
     },
     
     // API вызовы
@@ -68,9 +49,6 @@ const DataManager = {
     
     // Аутентификация
     async authenticate(username, password) {
-        console.log('=== authenticate called ===');
-        console.log('authenticate called for username:', username);
-        
         try {
             const response = await fetch('/api/login', {
                 method: 'POST',
@@ -78,28 +56,19 @@ const DataManager = {
                 body: JSON.stringify({ username, password })
             });
             
-            console.log('Login response status:', response.status);
-            
             if (!response.ok) {
                 const error = await response.json();
-                console.error('Login failed:', error);
                 return null;
             }
             
             const user = await response.json();
-            console.log('Login successful for user:', user.username);
-            console.log('User data:', user);
             
             // Сохраняем пользователя в localStorage (без пароля)
             this.currentUser = user;
             localStorage.setItem('ls_currentUser', JSON.stringify(user));
-            console.log('Saved to localStorage:', localStorage.getItem('ls_currentUser'));
             
             // Логируем вход
             await this.logAction(user.id, user.username, 'login', 'Вход в систему');
-            
-            console.log('=== authenticate completed ===');
-            console.log('currentUser set to:', this.currentUser.username);
             
             return user;
         } catch (error) {
@@ -111,8 +80,6 @@ const DataManager = {
     // Выход
     async logout() {
         if (this.currentUser) {
-            console.log('logout for user:', this.currentUser.username);
-            
             try {
                 await fetch('/api/logout', {
                     method: 'POST',
@@ -133,11 +100,8 @@ const DataManager = {
     // Обновление пользователя
     async updateUser(updatedData) {
         if (!this.currentUser) {
-            console.error('updateUser: no current user');
             return null;
         }
-        
-        console.log('updateUser for user:', this.currentUser.username, 'data:', updatedData);
         
         try {
             const response = await fetch(`/api/user/${this.currentUser.id}`, {
@@ -147,7 +111,6 @@ const DataManager = {
             });
             
             if (!response.ok) {
-                console.error('Update user failed');
                 return null;
             }
             
@@ -155,7 +118,6 @@ const DataManager = {
             this.currentUser = user;
             localStorage.setItem('ls_currentUser', JSON.stringify(user));
             
-            console.log('User updated successfully');
             return user;
         } catch (error) {
             console.error('Update user error:', error);
@@ -182,7 +144,6 @@ const DataManager = {
             const response = await fetch('/api/users');
             if (response.ok) {
                 const users = await response.json();
-                console.log('Fetched all users:', users.map(u => u.username));
                 return users;
             }
             return [];
@@ -497,8 +458,6 @@ const DataManager = {
     async enrollCourse(courseId) {
         if (!this.currentUser) return false;
         
-        console.log('enrollCourse for user:', this.currentUser.username, 'courseId:', courseId);
-        
         // Парсим enrolledCourses из строки
         const enrolledCourses = this.parseEnrolledCourses(this.currentUser.enrolledCourses);
         
@@ -523,7 +482,6 @@ const DataManager = {
             lastAccessed: new Date().toISOString()
         };
         
-        console.log('Saving progress for topic', topicId, ':', learningProgress[topicId]);
         await this.updateUser({ learningProgress });
         await this.logAction(this.currentUser.id, this.currentUser.username, 'learning', `Изучение темы: ${topicId}`);
     },
@@ -633,35 +591,16 @@ const DataManager = {
     
     // Парсинг learningProgress из строки
     parseLearningProgress(data) {
-        console.log('parseLearningProgress called with data:', data);
-        console.log('data type:', typeof data);
-        
-        if (!data) {
-            console.log('No data, returning {}');
-            return {};
-        }
-        
-        if (typeof data === 'object' && !Array.isArray(data)) {
-            console.log('Already an object, returning as-is');
-            return data;
-        }
-        
+        if (!data) return {};
+        if (typeof data === 'object' && !Array.isArray(data)) return data;
         if (typeof data === 'string') {
             try {
                 const parsed = JSON.parse(data);
-                console.log('Parsed JSON:', parsed);
-                console.log('Parsed type:', typeof parsed);
-                
-                if (typeof parsed === 'object' && parsed !== null) {
-                    console.log('Returning parsed object');
-                    return parsed;
-                }
+                return typeof parsed === 'object' && parsed !== null ? parsed : {};
             } catch (e) {
-                console.error('Failed to parse JSON:', e);
+                return {};
             }
         }
-        
-        console.log('Returning empty object as fallback');
         return {};
     },
     
@@ -683,7 +622,3 @@ const DataManager = {
         return roleArray.includes(this.currentUser.role);
     }
 };
-
-node_modules/
-npm-debug.log
-.env

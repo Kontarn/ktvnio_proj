@@ -39,7 +39,6 @@ class LearningApp {
         const logoutBtn = document.getElementById('logout-btn');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', (e) => {
-                console.log('Клик по кнопке выхода обнаружен');
                 e.stopPropagation();
                 this.handleLogout();
             });
@@ -48,7 +47,6 @@ class LearningApp {
         // Дополнительно - делегирование на весь документ
         document.addEventListener('click', (e) => {
             if (e.target.closest('#logout-btn')) {
-                console.log('Делегированный клик по кнопке выхода');
                 this.handleLogout();
             }
         });
@@ -108,18 +106,11 @@ class LearningApp {
     
     // Проверка активной сессии
     async checkSession() {
-        console.log('=== checkSession called ===');
-        console.log('currentUser before check:', DataManager.getCurrentUser());
-        
         const user = DataManager.getCurrentUser();
         
         if (user) {
-            console.log('User is logged in:', user.username);
-            console.log('showing main screen');
             this.showMainScreen();
         } else {
-            console.log('No user logged in');
-            console.log('showing auth screen');
             this.showAuthScreen();
         }
     }
@@ -131,17 +122,9 @@ class LearningApp {
         const username = usernameInput.value;
         const password = passwordInput.value;
         
-        console.log('=== handleLogin called ===');
-        console.log('Username input value:', username);
-        console.log('Password input value:', password);
-        
         const user = await DataManager.authenticate(username, password);
         
-        console.log('After authenticate, currentUser:', DataManager.getCurrentUser());
-        
         if (user) {
-            console.log('Login successful for user:', user.username, 'Role:', user.role);
-            
             // Явно переключаем экраны через style
             const authScreen = document.getElementById('auth-screen');
             const mainScreen = document.getElementById('main-screen');
@@ -159,8 +142,6 @@ class LearningApp {
             // Показываем главный экран с меню
             this.showMainScreen();
             
-            console.log('Screens switched, mainScreen display:', mainScreen.style.display);
-            
             // Обновляем время входа в фоне (не блокируем вход)
             DataManager.updateUser({ lastLogin: new Date().toISOString() });
         } else {
@@ -170,7 +151,6 @@ class LearningApp {
         
     // Обработка выхода
     async handleLogout() {
-        console.log('handleLogout вызван');
         try {
             // Сначала обновляем время выхода
             if (DataManager.getCurrentUser()) {
@@ -178,7 +158,6 @@ class LearningApp {
             }
             // Затем выполняем выход
             await DataManager.logout();
-            console.log('Выход выполнен');
             
             // Явно переключаем экраны
             const authScreen = document.getElementById('auth-screen');
@@ -202,7 +181,6 @@ class LearningApp {
     
     // Показ экрана аутентификации
     showAuthScreen() {
-        console.log('showAuthScreen called');
         const authScreen = document.getElementById('auth-screen');
         const mainScreen = document.getElementById('main-screen');
         
@@ -215,7 +193,6 @@ class LearningApp {
             mainScreen.style.display = 'none';
             mainScreen.classList.remove('active');
         }
-        console.log('authScreen displayed, mainScreen hidden');
     }
     
     // Скрытие экрана аутентификации
@@ -225,13 +202,8 @@ class LearningApp {
     
     // Показ главного экрана
     showMainScreen() {
-        console.log('showMainScreen called');
         const user = DataManager.getCurrentUser();
-        if (!user) {
-            console.log('showMainScreen: no user, returning');
-            return;
-        }
-        console.log('showMainScreen: showing screen for user', user.username, 'role:', user.role);
+        if (!user) return;
         
         // Явно скрываем экран входа и показываем главный
         const authScreen = document.getElementById('auth-screen');
@@ -246,8 +218,6 @@ class LearningApp {
             mainScreen.style.display = 'flex';
             mainScreen.classList.add('active');
         }
-        
-        console.log('Auth screen hidden, main screen shown');
         
         // Обновляем информацию о пользователе
         document.getElementById('user-info').innerHTML = `
@@ -280,7 +250,6 @@ class LearningApp {
         
         // Загружаем контент
         this.navigate('dashboard');
-        console.log('showMainScreen completed');
     }
     
     // Навигация по секциям
@@ -395,15 +364,7 @@ class LearningApp {
             return;
         }
         
-        console.log('Enrolling user to course:', courseId);
         const success = await DataManager.enrollCourse(courseId);
-        
-        console.log('Enrollment result:', success);
-        console.log('Current user after enrollment:', DataManager.getCurrentUser());
-        
-        const updatedUser = DataManager.getCurrentUser();
-        const updatedEnrolledCourses = DataManager.parseEnrolledCourses(updatedUser.enrolledCourses);
-        console.log('Enrolled courses:', updatedEnrolledCourses);
         
         if (success) {
             alert('Вы успешно записаны на курс!');
@@ -428,11 +389,8 @@ class LearningApp {
         }
         
         const enrolledCourses = DataManager.parseEnrolledCourses(user.enrolledCourses);
-        console.log('updateMenuVisibility called for user:', user.username);
-        console.log('User enrolledCourses:', enrolledCourses);
         
         const hasCourses = enrolledCourses.length > 0;
-        console.log('Has courses:', hasCourses);
         
         // Скрываем/показываем разделы, требующие записанных курсов
         const courseRequiredIds = ['nav-learning', 'nav-tests', 'nav-results'];
@@ -440,11 +398,10 @@ class LearningApp {
             const item = document.getElementById(id);
             if (item) {
                 item.style.display = hasCourses ? 'flex' : 'none';
-                console.log('Setting display for', id, 'to', hasCourses ? 'flex' : 'none');
             }
         });
     }
-        
+    
     // Загрузка материала для изучения
     async loadLearning() {
         const user = DataManager.getCurrentUser();
@@ -463,7 +420,6 @@ class LearningApp {
         }
         
         this.learningTopics = await DataManager.getCourseTopics(1);
-        console.log('Loaded topics:', this.learningTopics);
         this.currentTopicIndex = 0;
         
         // Находим первую незавершённую тему
@@ -556,7 +512,6 @@ class LearningApp {
         const allCompleted = this.learningTopics.every(t => progress[t.id]?.completed);
         
         if (!allCompleted) {
-            console.error('Прогресс не сохранён:', progress);
             alert('Ошибка сохранения прогресса. Попробуйте обновить страницу.');
             return;
         }
@@ -589,13 +544,9 @@ class LearningApp {
         const freshUser = await DataManager.fetchUser(user.id);
         const progress = DataManager.parseLearningProgress(freshUser.learningProgress);
         
-        console.log('Checking test access - learningProgress:', progress);
-        
         // Проверяем изучил ли пользователь материал
         const allTopicsCompleted = this.learningTopics.length > 0 && 
             this.learningTopics.every(t => progress[t.id]?.completed);
-        
-        console.log('All topics completed:', allTopicsCompleted);
         
         if (!allTopicsCompleted) {
             this.showModal(`
@@ -659,7 +610,6 @@ class LearningApp {
     // Показ вопроса
     showQuestion() {
         if (!this.testData) {
-            console.error('Test data not loaded!');
             return;
         }
         
@@ -768,8 +718,6 @@ class LearningApp {
         // Загружаем свежие данные пользователя из БД
         const freshUser = await DataManager.fetchUser(user.id);
         const testResults = DataManager.parseTestResults(freshUser.testResults);
-        
-        console.log('loadResults - testResults:', testResults);
         
         if (testResults.length === 0) {
             resultsContent.innerHTML = `
