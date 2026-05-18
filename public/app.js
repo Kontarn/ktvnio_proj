@@ -79,19 +79,31 @@ class LearningApp {
         if (prevQuestionBtn) prevQuestionBtn.addEventListener('click', () => this.prevQuestion());
         if (nextQuestionBtn) nextQuestionBtn.addEventListener('click', () => this.nextQuestion());
         if (submitTestBtn) submitTestBtn.addEventListener('click', () => this.submitTest());
-        if (refreshLogsBtn) refreshLogsBtn.addEventListener('click', () => this.loadLogs());
+        if (refreshLogsBtn) refreshLogsBtn.addEventListener('click', async () => await this.loadLogs());
         const refreshStudentResultsBtn = document.getElementById('refresh-student-results-btn');
-        if (refreshStudentResultsBtn) refreshStudentResultsBtn.addEventListener('click', () => this.loadStudentResults());
+        if (refreshStudentResultsBtn) refreshStudentResultsBtn.addEventListener('click', async () => await this.loadStudentResults());
         if (solveEquationBtn) solveEquationBtn.addEventListener('click', () => this.solveEquation());
         if (clearCalculatorBtn) clearCalculatorBtn.addEventListener('click', () => this.clearCalculator());
+        
+        // Переключение видимости пароля
+        const togglePasswordBtn = document.getElementById('toggle-password');
+        const passwordInput = document.getElementById('password');
+        if (togglePasswordBtn && passwordInput) {
+            togglePasswordBtn.addEventListener('click', () => {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                togglePasswordBtn.classList.toggle('active');
+                togglePasswordBtn.textContent = type === 'password' ? '👁️' : '🙈';
+            });
+        }
         
         // Фильтры логов
         const logUserFilter = document.getElementById('log-user-filter');
         const logTypeFilter = document.getElementById('log-type-filter');
-        if (logUserFilter) logUserFilter.addEventListener('change', () => this.loadLogs());
-        if (logTypeFilter) logTypeFilter.addEventListener('change', () => this.loadLogs());
+        if (logUserFilter) logUserFilter.addEventListener('change', async () => await this.loadLogs());
+        if (logTypeFilter) logTypeFilter.addEventListener('change', async () => await this.loadLogs());
         const courseFilter = document.getElementById('course-filter');
-        if (courseFilter) courseFilter.addEventListener('change', () => this.loadStudentResults());
+        if (courseFilter) courseFilter.addEventListener('change', async () => await this.loadStudentResults());
         
         // Модальное окно
         const modalClose = document.querySelector('.modal-close');
@@ -114,13 +126,13 @@ class LearningApp {
             this.showAuthScreen();
         }
     }
-        
+    
     // Обработка входа
     async handleLogin() {
         const usernameInput = document.getElementById('username');
         const passwordInput = document.getElementById('password');
-        const username = usernameInput.value;
-        const password = passwordInput.value;
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value.trim();
         
         const user = await DataManager.authenticate(username, password);
         
@@ -824,67 +836,72 @@ class LearningApp {
     }
         
     // Загрузка журналов событий (админ)
-    loadLogs() {
+    async loadLogs() {
         const logsContent = document.getElementById('logs-content');
         
-        // Заполняем фильтр пользователей
-        const userFilter = document.getElementById('log-user-filter');
-        if (userFilter.options.length === 1) {
-            const users = DataManager.getAllUsers();
-            users.forEach(user => {
-                const option = document.createElement('option');
-                option.value = user.id;
-                option.textContent = user.username;
-                userFilter.appendChild(option);
-            });
-        }
-        
-        const userId = document.getElementById('log-user-filter').value;
-        const actionType = document.getElementById('log-type-filter').value;
-        
-        const filters = {};
-        if (userId !== 'all') filters.userId = parseInt(userId);
-        if (actionType !== 'all') filters.action = actionType;
-        
-        const logs = DataManager.getLogs(filters);
-        
-        if (logs.length === 0) {
-            logsContent.innerHTML = '<p>Событий не найдено</p>';
-            return;
-        }
-        
-        const actionLabels = {
-            login: 'Вход',
-            logout: 'Выход',
-            enroll: 'Запись на курс',
-            learning: 'Изучение материала',
-            test: 'Тестирование'
-        };
-        
-        const tableHtml = `
-            <table class="logs-table">
-                <thead>
-                    <tr>
-                        <th>Время</th>
-                        <th>Пользователь</th>
-                        <th>Событие</th>
-                        <th>Описание</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${logs.map(log => `
+        try {
+            // Заполняем фильтр пользователей
+            const userFilter = document.getElementById('log-user-filter');
+            if (userFilter.options.length === 1) {
+                const users = await DataManager.getAllUsers();
+                users.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.id;
+                    option.textContent = user.username;
+                    userFilter.appendChild(option);
+                });
+            }
+            
+            const userId = document.getElementById('log-user-filter').value;
+            const actionType = document.getElementById('log-type-filter').value;
+            
+            const filters = {};
+            if (userId !== 'all') filters.userId = parseInt(userId);
+            if (actionType !== 'all') filters.action = actionType;
+            
+            const logs = await DataManager.getLogs(filters);
+            
+            if (logs.length === 0) {
+                logsContent.innerHTML = '<p>Событий не найдено</p>';
+                return;
+            }
+            
+            const actionLabels = {
+                login: 'Вход',
+                logout: 'Выход',
+                enroll: 'Запись на курс',
+                learning: 'Изучение материала',
+                test: 'Тестирование'
+            };
+            
+            const tableHtml = `
+                <table class="logs-table">
+                    <thead>
                         <tr>
-                            <td>${new Date(log.timestamp).toLocaleString('ru-RU')}</td>
-                            <td>${log.username}</td>
-                            <td><span class="log-type type-${log.action}">${actionLabels[log.action]}</span></td>
-                            <td>${log.description}</td>
+                            <th>Время</th>
+                            <th>Пользователь</th>
+                            <th>Событие</th>
+                            <th>Описание</th>
                         </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `;
-        
-        logsContent.innerHTML = tableHtml;
+                    </thead>
+                    <tbody>
+                        ${logs.map(log => `
+                            <tr>
+                                <td>${new Date(log.timestamp).toLocaleString('ru-RU')}</td>
+                                <td>${log.username}</td>
+                                <td><span class="log-type type-${log.action}">${actionLabels[log.action]}</span></td>
+                                <td>${log.description}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            logsContent.innerHTML = tableHtml;
+        } catch (error) {
+            console.error('Ошибка загрузки логов:', error);
+            logsContent.innerHTML = '<p>Ошибка загрузки журналов событий</p>';
+        }
     }
     
     // Загрузка калькулятора

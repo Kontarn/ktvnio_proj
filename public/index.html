@@ -19,9 +19,14 @@
                             <label for="username">Имя пользователя:</label>
                             <input type="text" id="username" required placeholder="Введите имя пользователя">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group password-group">
                             <label for="password">Пароль:</label>
-                            <input type="password" id="password" required placeholder="Введите пароль">
+                            <div class="password-input-wrapper">
+                                <input type="password" id="password" required placeholder="Введите пароль">
+                                <button type="button" id="toggle-password" class="password-toggle" aria-label="Показать пароль">
+                                    👁️
+                                </button>
+                            </div>
                         </div>
                         <button type="submit" class="btn btn-primary">Войти</button>
                     </form>
