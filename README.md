@@ -36,7 +36,6 @@
 │   ├── styles.css      # Стили интерфейса
 │   ├── app.js          # Основная логика приложения
 │   └── data.js         # Модуль управления данными (работа с API)
-├── docs/               # Копия public/ для GitHub Pages
 ├── server.js           # Node.js сервер (бэкенд)
 ├── package.json        # Зависимости проекта
 ├── README.md           # Документация
@@ -148,19 +147,6 @@ npm start &
 - **Frontend**: Vanilla JavaScript (ES6+), HTML5, CSS3
 - **Authentication**: bcryptjs для хеширования паролей
 - **Session**: LocalStorage для хранения сессии пользователя
-
-## GitHub Pages
-
-Для публикации статической версии проекта:
-
-1. Папка `docs/` содержит копию файлов из `public/`
-2. В настройках репозитория включите GitHub Pages:
-   - **Settings → Pages**
-   - **Source**: `Deploy from a branch`
-   - **Branch**: `main`
-   - **Folder**: `/docs`
-
-**Важно:** На GitHub Pages работает только фронтенд. API и база данных не доступны, так как GitHub Pages — статический хостинг без Node.js.
 
 ## Разработка
 
