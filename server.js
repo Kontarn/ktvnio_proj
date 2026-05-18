@@ -1,0 +1,464 @@
+const express = require('express');
+const cors = require('cors');
+const Database = require('better-sqlite3');
+const bcrypt = require('bcryptjs');
+const path = require('path');
+
+const app = express();
+const PORT = 3000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.static('public'));
+
+// Инициализация базы данных
+const db = new Database('school.db');
+db.pragma('journal_mode = WAL');
+
+// Создание таблиц
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL,
+    roleName TEXT NOT NULL,
+    enrolledCourses TEXT DEFAULT '[]',
+    testResults TEXT DEFAULT '[]',
+    learningProgress TEXT DEFAULT '{}',
+    lastLogin TEXT,
+    lastLogout TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS courses (
+    id INTEGER PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    instructor TEXT,
+    duration TEXT,
+    testId INTEGER
+  );
+
+  CREATE TABLE IF NOT EXISTS topics (
+    id INTEGER PRIMARY KEY,
+    courseId INTEGER NOT NULL,
+    orderNum INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    FOREIGN KEY (courseId) REFERENCES courses(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS tests (
+    id INTEGER PRIMARY KEY,
+    courseId INTEGER NOT NULL,
+    questions TEXT NOT NULL,
+    duration INTEGER DEFAULT 60,
+    FOREIGN KEY (courseId) REFERENCES courses(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS activity_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId INTEGER NOT NULL,
+    username TEXT NOT NULL,
+    action TEXT NOT NULL,
+    description TEXT,
+    timestamp TEXT NOT NULL,
+    FOREIGN KEY (userId) REFERENCES users(id)
+  );
+`);
+
+// Инициализация данных (если пустая БД)
+const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
+if (userCount.count === 0) {
+  console.log('Инициализация пользователей...');
+  
+  // Хэширование паролей
+  const hash1 = bcrypt.hashSync('listener123', 10);
+  const hash2 = bcrypt.hashSync('teacher123', 10);
+  const hash3 = bcrypt.hashSync('developer123', 10);
+  const hash4 = bcrypt.hashSync('support123', 10);
+  
+  db.prepare(`
+    INSERT INTO users (id, username, password, role, roleName, enrolledCourses, testResults, learningProgress)
+    VALUES (1, 'listener', ?, 'listener', 'Слушатель', '[]', '[]', '{}')
+  `).run(hash1);
+  
+  db.prepare(`
+    INSERT INTO users (id, username, password, role, roleName, enrolledCourses, testResults, learningProgress)
+    VALUES (2, 'teacher', ?, 'teacher', 'Преподаватель', '[]', '[]', '{}')
+  `).run(hash2);
+  
+  db.prepare(`
+    INSERT INTO users (id, username, password, role, roleName, enrolledCourses, testResults, learningProgress)
+    VALUES (3, 'developer', ?, 'developer', 'Разработчик', '[]', '[]', '{}')
+  `).run(hash3);
+  
+  db.prepare(`
+    INSERT INTO users (id, username, password, role, roleName, enrolledCourses, testResults, learningProgress)
+    VALUES (4, 'support', ?, 'support', 'Техническая поддержка', '[]', '[]', '{}')
+  `).run(hash4);
+  
+  console.log('Пользователи созданы');
+}
+
+// Курсов пока нет, добавим если нужно
+const courseCount = db.prepare('SELECT COUNT(*) as count FROM courses').get();
+if (courseCount.count === 0) {
+  console.log('Инициализация курсов...');
+  // Данные курсов будут загружены из data.json при первом запуске
+}
+
+// ==================== API ROUTES ====================
+
+// Аутентификация
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  
+  const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+  
+  if (!user) {
+    return res.status(401).json({ error: 'Неверное имя пользователя или пароль' });
+  }
+  
+  const validPassword = bcrypt.compareSync(password, user.password);
+  if (!validPassword) {
+    return res.status(401).json({ error: 'Неверное имя пользователя или пароль' });
+  }
+  
+  // Обновляем lastLogin
+  db.prepare('UPDATE users SET lastLogin = ? WHERE id = ?')
+    .run(new Date().toISOString(), user.id);
+  
+  // Возвращаем пользователя без пароля
+  const { password: _, ...userWithoutPassword } = user;
+  res.json(userWithoutPassword);
+});
+
+app.post('/api/logout', (req, res) => {
+  const { userId } = req.body;
+  
+  if (userId) {
+    db.prepare('UPDATE users SET lastLogout = ? WHERE id = ?')
+      .run(new Date().toISOString(), userId);
+  }
+  
+  res.json({ success: true });
+});
+
+// Получение текущего пользователя
+app.get('/api/user/:id', (req, res) => {
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+  
+  if (!user) {
+    return res.status(404).json({ error: 'Пользователь не найден' });
+  }
+  
+  const { password: _, ...userWithoutPassword } = user;
+  res.json(userWithoutPassword);
+});
+
+// Обновление пользователя
+app.put('/api/user/:id', (req, res) => {
+  const { enrolledCourses, testResults, learningProgress } = req.body;
+  
+  const updates = [];
+  const values = [];
+  
+  if (enrolledCourses !== undefined) {
+    updates.push('enrolledCourses = ?');
+    values.push(JSON.stringify(enrolledCourses));
+  }
+  
+  if (testResults !== undefined) {
+    updates.push('testResults = ?');
+    values.push(JSON.stringify(testResults));
+  }
+  
+  if (learningProgress !== undefined) {
+    updates.push('learningProgress = ?');
+    values.push(JSON.stringify(learningProgress));
+  }
+  
+  if (updates.length === 0) {
+    return res.status(400).json({ error: 'Нет данных для обновления' });
+  }
+  
+  values.push(req.params.id);
+  
+  db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+  
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+  const { password: _, ...userWithoutPassword } = user;
+  
+  res.json(userWithoutPassword);
+});
+
+// Запись на курс (для developer)
+app.post('/api/user/:userId/enrollment/:courseId', (req, res) => {
+  const { userId, courseId } = req.params;
+  
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  
+  if (!user) {
+    return res.status(404).json({ error: 'Пользователь не найден' });
+  }
+  
+  let enrolledCourses = JSON.parse(user.enrolledCourses || '[]');
+  
+  if (!Array.isArray(enrolledCourses)) {
+    enrolledCourses = [];
+  }
+  
+  if (!enrolledCourses.includes(parseInt(courseId))) {
+    enrolledCourses.push(parseInt(courseId));
+    
+    db.prepare('UPDATE users SET enrolledCourses = ? WHERE id = ?')
+      .run(JSON.stringify(enrolledCourses), userId);
+  }
+  
+  const updatedUser = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  const { password: _, ...userWithoutPassword } = updatedUser;
+  
+  res.json(userWithoutPassword);
+});
+
+// Отписка от курса (для developer)
+app.delete('/api/user/:userId/enrollment/:courseId', (req, res) => {
+  const { userId, courseId } = req.params;
+  
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  
+  if (!user) {
+    return res.status(404).json({ error: 'Пользователь не найден' });
+  }
+  
+  let enrolledCourses = JSON.parse(user.enrolledCourses || '[]');
+  
+  if (!Array.isArray(enrolledCourses)) {
+    return res.status(400).json({ error: 'Неверный формат данных' });
+  }
+  
+  const index = enrolledCourses.indexOf(parseInt(courseId));
+  
+  if (index === -1) {
+    return res.status(400).json({ error: 'Пользователь не записан на этот курс' });
+  }
+  
+  enrolledCourses.splice(index, 1);
+  
+  db.prepare('UPDATE users SET enrolledCourses = ? WHERE id = ?')
+    .run(JSON.stringify(enrolledCourses), userId);
+  
+  const updatedUser = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  const { password: _, ...userWithoutPassword } = updatedUser;
+  
+  res.json(userWithoutPassword);
+});
+
+// Очистка данных активности (для developer)
+app.delete('/api/user/:userId/activity/:courseId', (req, res) => {
+  const { userId, courseId } = req.params;
+  
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  
+  if (!user) {
+    return res.status(404).json({ error: 'Пользователь не найден' });
+  }
+  
+  let testResults = JSON.parse(user.testResults || '[]');
+  let learningProgress = JSON.parse(user.learningProgress || '{}');
+  
+  if (!Array.isArray(testResults)) {
+    testResults = [];
+  }
+  
+  if (typeof learningProgress !== 'object' || learningProgress === null) {
+    learningProgress = {};
+  }
+  
+  // Получаем все тесты для курса
+  const courses = db.prepare('SELECT * FROM courses').all();
+  const course = courses.find(c => c.id === parseInt(courseId));
+  
+  if (course && course.testId) {
+    // Удаляем результаты тестов этого курса
+    testResults = testResults.filter(r => r.testId !== course.testId);
+  }
+  
+  // Удаляем прогресс изучения тем этого курса
+  const topics = db.prepare('SELECT id FROM topics WHERE courseId = ?').all(courseId);
+  const topicIds = topics.map(t => t.id);
+  
+  topicIds.forEach(topicId => {
+    delete learningProgress[topicId];
+  });
+  
+  db.prepare('UPDATE users SET testResults = ?, learningProgress = ? WHERE id = ?')
+    .run(JSON.stringify(testResults), JSON.stringify(learningProgress), userId);
+  
+  const updatedUser = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  const { password: _, ...userWithoutPassword } = updatedUser;
+  
+  res.json(userWithoutPassword);
+});
+
+// Полный сброс данных пользователя (для developer)
+app.delete('/api/user/:userId/reset/:courseId', (req, res) => {
+  const { userId, courseId } = req.params;
+  
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  
+  if (!user) {
+    return res.status(404).json({ error: 'Пользователь не найден' });
+  }
+  
+  // Отписываем от курса
+  let enrolledCourses = JSON.parse(user.enrolledCourses || '[]');
+  
+  if (Array.isArray(enrolledCourses)) {
+    const index = enrolledCourses.indexOf(parseInt(courseId));
+    if (index !== -1) {
+      enrolledCourses.splice(index, 1);
+      db.prepare('UPDATE users SET enrolledCourses = ? WHERE id = ?')
+        .run(JSON.stringify(enrolledCourses), userId);
+    }
+  }
+  
+  // Очищаем результаты тестов этого курса
+  let testResults = JSON.parse(user.testResults || '[]');
+  
+  if (!Array.isArray(testResults)) {
+    testResults = [];
+  }
+  
+  const courses = db.prepare('SELECT * FROM courses').all();
+  const course = courses.find(c => c.id === parseInt(courseId));
+  
+  if (course && course.testId) {
+    testResults = testResults.filter(r => r.testId !== course.testId);
+  }
+  
+  // Очищаем прогресс изучения тем этого курса
+  let learningProgress = JSON.parse(user.learningProgress || '{}');
+  
+  if (typeof learningProgress !== 'object' || learningProgress === null) {
+    learningProgress = {};
+  }
+  
+  const topics = db.prepare('SELECT id FROM topics WHERE courseId = ?').all(courseId);
+  const topicIds = topics.map(t => t.id);
+  
+  topicIds.forEach(topicId => {
+    delete learningProgress[topicId];
+  });
+  
+  db.prepare('UPDATE users SET testResults = ?, learningProgress = ? WHERE id = ?')
+    .run(JSON.stringify(testResults), JSON.stringify(learningProgress), userId);
+  
+  const updatedUser = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  const { password: _, ...userWithoutPassword } = updatedUser;
+  
+  res.json(userWithoutPassword);
+});
+
+// Логирование действий
+app.post('/api/logs', (req, res) => {
+  const { userId, username, action, description } = req.body;
+  
+  db.prepare(`
+    INSERT INTO activity_logs (userId, username, action, description, timestamp)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(userId, username, action, description, new Date().toISOString());
+  
+  res.json({ success: true });
+});
+
+// Получение логов
+app.get('/api/logs', (req, res) => {
+  const { userId, action } = req.query;
+  
+  let query = 'SELECT * FROM activity_logs ORDER BY timestamp DESC';
+  const params = [];
+  
+  if (userId && userId !== 'all') {
+    query += ' WHERE userId = ?';
+    params.push(parseInt(userId));
+  }
+  
+  if (action && action !== 'all') {
+    if (query.includes('WHERE')) {
+      query += ' AND action = ?';
+    } else {
+      query += ' WHERE action = ?';
+    }
+    params.push(action);
+  }
+  
+  const logs = db.prepare(query).all(...params);
+  res.json(logs);
+});
+
+// Получение всех пользователей (для админов)
+app.get('/api/users', (req, res) => {
+  const users = db.prepare('SELECT * FROM users').all();
+  
+  const usersWithoutPassword = users.map(user => {
+    const { password: _, ...userWithoutPassword } = user;
+    return userWithoutPassword;
+  });
+  
+  res.json(usersWithoutPassword);
+});
+
+// Получение курсов
+app.get('/api/courses', (req, res) => {
+  const courses = db.prepare('SELECT * FROM courses').all();
+  res.json(courses);
+});
+
+// Получение тем курса
+app.get('/api/courses/:id/topics', (req, res) => {
+  const topics = db.prepare('SELECT * FROM topics WHERE courseId = ? ORDER BY orderNum')
+    .all(req.params.id);
+  res.json(topics);
+});
+
+// Получение теста
+app.get('/api/courses/:id/test', (req, res) => {
+  const test = db.prepare('SELECT * FROM tests WHERE courseId = ?').get(req.params.id);
+  
+  if (!test) {
+    return res.status(404).json({ error: 'Тест не найден' });
+  }
+  
+  res.json(test);
+});
+
+// Статистика пользователя
+app.get('/api/user/:id/stats', (req, res) => {
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+  
+  if (!user) {
+    return res.status(404).json({ error: 'Пользователь не найден' });
+  }
+  
+  const enrolledCourses = JSON.parse(user.enrolledCourses || '[]');
+  const testResults = JSON.parse(user.testResults || '[]');
+  
+  const avgScore = testResults.length > 0
+    ? Math.round(testResults.reduce((sum, r) => sum + r.percentage, 0) / testResults.length)
+    : 0;
+  
+  res.json({
+    enrolledCourses: enrolledCourses.length,
+    testsCompleted: testResults.length,
+    averageScore: avgScore
+  });
+});
+
+// Запуск сервера
+app.listen(PORT, () => {
+  console.log(`Сервер запущен на http://localhost:${PORT}`);
+  console.log(`База данных: school.db`);
+});

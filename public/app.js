@@ -15,11 +15,12 @@ class LearningApp {
     }
     
     async init() {
-        console.log('=== init called ===');
-        await DataManager.loadData();
-        console.log('loadData completed, currentUser:', DataManager.getCurrentUser());
+        console.log('=== LearningApp.init called ===');
+        // Инициализация DataManager с проверкой сессии
+        await DataManager.init();
+        console.log('After DataManager.init, currentUser:', DataManager.getCurrentUser());
         this.setupEventListeners();
-        // Сначала проверяем сессию
+        // Проверяем сессию
         await this.checkSession();
     }
     
@@ -109,7 +110,9 @@ class LearningApp {
     async checkSession() {
         console.log('=== checkSession called ===');
         console.log('currentUser before check:', DataManager.getCurrentUser());
+        
         const user = DataManager.getCurrentUser();
+        
         if (user) {
             console.log('User is logged in:', user.username);
             console.log('showing main screen');
@@ -131,7 +134,6 @@ class LearningApp {
         console.log('=== handleLogin called ===');
         console.log('Username input value:', username);
         console.log('Password input value:', password);
-        console.log('All users in data:', DataManager.data.users.map(u => u.username));
         
         const user = await DataManager.authenticate(username, password);
         
@@ -139,9 +141,6 @@ class LearningApp {
         
         if (user) {
             console.log('Login successful for user:', user.username, 'Role:', user.role);
-            // Обновляем время входа
-            DataManager.updateUser({ lastLogin: new Date().toISOString() });
-            console.log('After updateUser, currentUser:', DataManager.getCurrentUser());
             
             // Явно переключаем экраны через style
             const authScreen = document.getElementById('auth-screen');
@@ -157,7 +156,13 @@ class LearningApp {
                 mainScreen.classList.add('active');
             }
             
+            // Показываем главный экран с меню
+            this.showMainScreen();
+            
             console.log('Screens switched, mainScreen display:', mainScreen.style.display);
+            
+            // Обновляем время входа в фоне (не блокируем вход)
+            DataManager.updateUser({ lastLogin: new Date().toISOString() });
         } else {
             alert('Неверное имя пользователя или пароль!');
         }
@@ -227,6 +232,22 @@ class LearningApp {
             return;
         }
         console.log('showMainScreen: showing screen for user', user.username, 'role:', user.role);
+        
+        // Явно скрываем экран входа и показываем главный
+        const authScreen = document.getElementById('auth-screen');
+        const mainScreen = document.getElementById('main-screen');
+        
+        if (authScreen) {
+            authScreen.style.display = 'none';
+            authScreen.classList.remove('active');
+        }
+        
+        if (mainScreen) {
+            mainScreen.style.display = 'flex';
+            mainScreen.classList.add('active');
+        }
+        
+        console.log('Auth screen hidden, main screen shown');
         
         // Обновляем информацию о пользователе
         document.getElementById('user-info').innerHTML = `
@@ -328,9 +349,9 @@ class LearningApp {
         
         const stats = DataManager.getStats();
         
-        document.getElementById('courses-count').textContent = stats.enrolledCourses + ' курсов';
-        document.getElementById('tests-completed').textContent = stats.testsCompleted;
-        document.getElementById('average-score').textContent = stats.averageScore + '%';
+        document.getElementById('courses-count').textContent = (stats?.enrolledCourses || 0) + ' курсов';
+        document.getElementById('tests-completed').textContent = stats?.testsCompleted || 0;
+        document.getElementById('average-score').textContent = (stats?.averageScore || 0) + '%';
         document.getElementById('time-spent').textContent = 'В системе';
     }
     
@@ -340,8 +361,10 @@ class LearningApp {
         const courses = DataManager.getCourses();
         const user = DataManager.getCurrentUser();
         
+        const enrolledCourses = DataManager.parseEnrolledCourses(user.enrolledCourses);
+        
         coursesList.innerHTML = courses.map(course => {
-            const isEnrolled = user.enrolledCourses.includes(course.id);
+            const isEnrolled = enrolledCourses.includes(course.id);
             const statusClass = isEnrolled ? 'status-enrolled' : 'status-available';
             const statusText = isEnrolled ? 'Записан' : 'Доступен';
             
@@ -363,9 +386,10 @@ class LearningApp {
     // Запись на курс
     async enrollToCourse(courseId) {
         const user = DataManager.getCurrentUser();
+        const enrolledCourses = DataManager.parseEnrolledCourses(user.enrolledCourses);
         
         // Проверяем, уже ли записан пользователь
-        if (user.enrolledCourses.includes(courseId)) {
+        if (enrolledCourses.includes(courseId)) {
             // Если уже записан - переходим к изучению
             this.navigate('learning');
             return;
@@ -376,7 +400,10 @@ class LearningApp {
         
         console.log('Enrollment result:', success);
         console.log('Current user after enrollment:', DataManager.getCurrentUser());
-        console.log('Enrolled courses:', DataManager.getCurrentUser().enrolledCourses);
+        
+        const updatedUser = DataManager.getCurrentUser();
+        const updatedEnrolledCourses = DataManager.parseEnrolledCourses(updatedUser.enrolledCourses);
+        console.log('Enrolled courses:', updatedEnrolledCourses);
         
         if (success) {
             alert('Вы успешно записаны на курс!');
@@ -400,10 +427,11 @@ class LearningApp {
             return;
         }
         
+        const enrolledCourses = DataManager.parseEnrolledCourses(user.enrolledCourses);
         console.log('updateMenuVisibility called for user:', user.username);
-        console.log('User enrolledCourses:', user.enrolledCourses);
+        console.log('User enrolledCourses:', enrolledCourses);
         
-        const hasCourses = user.enrolledCourses && user.enrolledCourses.length > 0;
+        const hasCourses = enrolledCourses.length > 0;
         console.log('Has courses:', hasCourses);
         
         // Скрываем/показываем разделы, требующие записанных курсов
@@ -418,11 +446,12 @@ class LearningApp {
     }
         
     // Загрузка материала для изучения
-    loadLearning() {
+    async loadLearning() {
         const user = DataManager.getCurrentUser();
+        const enrolledCourses = DataManager.parseEnrolledCourses(user.enrolledCourses);
         
         // Проверяем записан ли пользователь на курс
-        if (!user.enrolledCourses.includes(1)) {
+        if (!enrolledCourses.includes(1)) {
             this.showModal(`
                 <h3>Запись на курс обязательна</h3>
                 <p>Сначала запишитесь на курс в разделе "Курсы"</p>
@@ -433,13 +462,14 @@ class LearningApp {
             return;
         }
         
-        this.learningTopics = DataManager.getCourseTopics(1);
+        this.learningTopics = await DataManager.getCourseTopics(1);
+        console.log('Loaded topics:', this.learningTopics);
         this.currentTopicIndex = 0;
         
         // Находим первую незавершённую тему
         for (let i = 0; i < this.learningTopics.length; i++) {
             const topicId = this.learningTopics[i].id;
-            if (!user.learningProgress[topicId]?.completed) {
+            if (!user.learningProgress?.[topicId]?.completed) {
                 this.currentTopicIndex = i;
                 break;
             }
@@ -491,11 +521,44 @@ class LearningApp {
     // Завершение изучения материала
     async completeLearning() {
         const user = DataManager.getCurrentUser();
-        const topic = this.learningTopics[this.currentTopicIndex];
         
-        // Отмечаем все темы как изученные
+        // Создаём объект прогресса со всеми темами сразу
+        const learningProgress = {};
         for (const t of this.learningTopics) {
-            await DataManager.updateTopicProgress(t.id, true, 60);
+            learningProgress[t.id] = {
+                completed: true,
+                timeSpent: 60,
+                lastAccessed: new Date().toISOString()
+            };
+        }
+        
+        // Сохраняем весь прогресс сразу одним запросом
+        const updatedUser = await DataManager.updateUser({ learningProgress });
+        
+        if (!updatedUser) {
+            alert('Ошибка обновления данных пользователя');
+            return;
+        }
+        
+        // Ждём немного для синхронизации с БД
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Обновляем данные пользователя из БД
+        const freshUser = await DataManager.fetchUser(user.id);
+        
+        if (!freshUser) {
+            alert('Ошибка обновления данных пользователя');
+            return;
+        }
+        
+        // Проверяем, что прогресс сохранён
+        const progress = DataManager.parseLearningProgress(freshUser.learningProgress);
+        const allCompleted = this.learningTopics.every(t => progress[t.id]?.completed);
+        
+        if (!allCompleted) {
+            console.error('Прогресс не сохранён:', progress);
+            alert('Ошибка сохранения прогресса. Попробуйте обновить страницу.');
+            return;
         }
         
         alert('Материал курса успешно изучен! Теперь вы можете пройти тестирование.');
@@ -503,11 +566,12 @@ class LearningApp {
     }
     
     // Загрузка тестирования
-    loadTests() {
+    async loadTests() {
         const user = DataManager.getCurrentUser();
+        const enrolledCourses = DataManager.parseEnrolledCourses(user.enrolledCourses);
         
         // Проверяем записан ли пользователь на курс
-        if (!user.enrolledCourses.includes(1)) {
+        if (!enrolledCourses.includes(1)) {
             this.showModal(`
                 <h3>Запись на курс обязательна</h3>
                 <p>Сначала запишитесь на курс в разделе "Курсы"</p>
@@ -518,9 +582,20 @@ class LearningApp {
             return;
         }
         
+        // Загружаем темы курса для проверки прогресса
+        this.learningTopics = await DataManager.getCourseTopics(1);
+        
+        // Получаем свежий прогресс пользователя из БД
+        const freshUser = await DataManager.fetchUser(user.id);
+        const progress = DataManager.parseLearningProgress(freshUser.learningProgress);
+        
+        console.log('Checking test access - learningProgress:', progress);
+        
         // Проверяем изучил ли пользователь материал
         const allTopicsCompleted = this.learningTopics.length > 0 && 
-            this.learningTopics.every(t => user.learningProgress[t.id]?.completed);
+            this.learningTopics.every(t => progress[t.id]?.completed);
+        
+        console.log('All topics completed:', allTopicsCompleted);
         
         if (!allTopicsCompleted) {
             this.showModal(`
@@ -540,13 +615,17 @@ class LearningApp {
     }
     
     // Начало тестирования
-    startTest() {
-        const test = DataManager.getTest(1);
-        if (!test) return;
+    async startTest() {
+        const test = await DataManager.getTest(1);
+        if (!test) {
+            alert('Ошибка загрузки теста!');
+            return;
+        }
         
         this.testAnswers = {};
         this.currentTestQuestion = 0;
         this.testStartTime = Date.now();
+        this.testData = test; // Сохраняем данные теста
         
         document.getElementById('test-intro').style.display = 'none';
         document.getElementById('test-container').style.display = 'block';
@@ -579,7 +658,12 @@ class LearningApp {
     
     // Показ вопроса
     showQuestion() {
-        const test = DataManager.getTest(1);
+        if (!this.testData) {
+            console.error('Test data not loaded!');
+            return;
+        }
+        
+        const test = this.testData;
         const question = test.questions[this.currentTestQuestion];
         
         document.getElementById('question-progress').textContent = 
@@ -630,8 +714,9 @@ class LearningApp {
     }
     
     nextQuestion() {
-        const test = DataManager.getTest(1);
-        if (this.currentTestQuestion < test.questions.length - 1) {
+        if (!this.testData) return;
+        
+        if (this.currentTestQuestion < this.testData.questions.length - 1) {
             this.currentTestQuestion++;
             this.showQuestion();
         }
@@ -639,7 +724,12 @@ class LearningApp {
     
     // Завершение тестирования
     async submitTest() {
-        const test = DataManager.getTest(1);
+        if (!this.testData) {
+            alert('Ошибка: тест не загружен!');
+            return;
+        }
+        
+        const test = this.testData;
         let correctAnswers = 0;
         
         // Подсчитываем правильные ответы
@@ -669,13 +759,19 @@ class LearningApp {
             <button class="btn btn-secondary" onclick="app.navigate('dashboard')">На главную</button>
         `;
     }
-    
+        
     // Загрузка результатов
-    loadResults() {
+    async loadResults() {
         const user = DataManager.getCurrentUser();
         const resultsContent = document.getElementById('results-content');
         
-        if (user.testResults.length === 0) {
+        // Загружаем свежие данные пользователя из БД
+        const freshUser = await DataManager.fetchUser(user.id);
+        const testResults = DataManager.parseTestResults(freshUser.testResults);
+        
+        console.log('loadResults - testResults:', testResults);
+        
+        if (testResults.length === 0) {
             resultsContent.innerHTML = `
                 <p>Вы ещё не проходили тестирование.</p>
                 <button class="btn btn-primary" onclick="app.navigate('tests')">Перейти к тестированию</button>
@@ -694,7 +790,7 @@ class LearningApp {
                     </tr>
                 </thead>
                 <tbody>
-                    ${user.testResults.map(result => `
+                    ${testResults.map(result => `
                         <tr>
                             <td>${result.testTitle}</td>
                             <td>${new Date(result.timestamp).toLocaleString('ru-RU')}</td>
@@ -714,9 +810,50 @@ class LearningApp {
     }
     
     // Загрузка пользователей (админ)
-    loadUsers() {
+    async loadUsers() {
         const usersList = document.getElementById('users-list');
-        const users = DataManager.getAllUsers();
+        const users = await DataManager.getAllUsers();
+        const currentUser = DataManager.getCurrentUser();
+        const isDeveloper = currentUser && currentUser.role === 'developer';
+        
+        const usersHtml = users.map(user => {
+            const enrolledCourses = DataManager.parseEnrolledCourses(user.enrolledCourses);
+            const isEnrolled = enrolledCourses && enrolledCourses.length > 0;
+            const coursesList = enrolledCourses ? enrolledCourses.join(', ') : 'Нет';
+            const testResults = DataManager.parseTestResults(user.testResults);
+            const testCount = testResults ? testResults.length : 0;
+            
+            let actionButtons = '';
+            if (isDeveloper && user.role === 'listener') {
+                actionButtons = `
+                    <div class="user-actions">
+                        ${isEnrolled ? `
+                            <button class="btn btn-danger btn-sm" onclick="app.unsubscribeUser(${user.id}, 1)">
+                                Отписать от курса
+                            </button>
+                            <button class="btn btn-warning btn-sm" onclick="app.clearUserActivity(${user.id}, 1)">
+                                Очистить активность
+                            </button>
+                            <button class="btn btn-danger btn-sm" onclick="app.resetUserCourse(${user.id}, 1)">
+                                Сбросить всё
+                            </button>
+                        ` : '<span style="color: #999; font-size: 12px;">Не записан на курсы</span>'}
+                    </div>
+                `;
+            }
+            
+            return `
+                <tr>
+                    <td>${user.id}</td>
+                    <td>${user.username}</td>
+                    <td><span class="user-role role-${user.role}">${user.roleName}</span></td>
+                    <td>${coursesList}</td>
+                    <td>${testCount}</td>
+                    <td>${user.lastLogin ? new Date(user.lastLogin).toLocaleString('ru-RU') : '—'}</td>
+                    <td>${actionButtons}</td>
+                </tr>
+            `;
+        }).join('');
         
         usersList.innerHTML = `
             <table class="users-table">
@@ -728,24 +865,16 @@ class LearningApp {
                         <th>Курсы</th>
                         <th>Тесты</th>
                         <th>Последний вход</th>
+                        ${isDeveloper ? '<th>Действия</th>' : ''}
                     </tr>
                 </thead>
                 <tbody>
-                    ${users.map(user => `
-                        <tr>
-                            <td>${user.id}</td>
-                            <td>${user.username}</td>
-                            <td><span class="user-role role-${user.role}">${user.roleName}</span></td>
-                            <td>${user.enrolledCourses}</td>
-                            <td>${user.testResults}</td>
-                            <td>${user.lastLogin ? new Date(user.lastLogin).toLocaleString('ru-RU') : '—'}</td>
-                        </tr>
-                    `).join('')}
+                    ${usersHtml}
                 </tbody>
             </table>
         `;
     }
-    
+        
     // Загрузка журналов событий (админ)
     loadLogs() {
         const logsContent = document.getElementById('logs-content');
@@ -820,7 +949,7 @@ class LearningApp {
     }
     
     // Загрузка результатов учеников (для преподавателей)
-    loadStudentResults() {
+    async loadStudentResults() {
         const user = DataManager.getCurrentUser();
         const resultsContent = document.getElementById('student-results-content');
         const courseFilter = document.getElementById('course-filter');
@@ -839,7 +968,7 @@ class LearningApp {
         const selectedCourseId = courseFilter.value === 'all' ? null : parseInt(courseFilter.value);
         
         // Получаем всех слушателей
-        const allUsers = DataManager.getAllUsers();
+        const allUsers = await DataManager.getAllUsers();
         const listeners = allUsers.filter(u => u.role === 'listener');
         
         if (listeners.length === 0) {
@@ -849,7 +978,10 @@ class LearningApp {
         
         // Фильтруем по курсу если выбран
         const filteredListeners = selectedCourseId 
-            ? listeners.filter(u => u.enrolledCourses.includes(selectedCourseId))
+            ? listeners.filter(u => {
+                const enrolledCourses = DataManager.parseEnrolledCourses(u.enrolledCourses);
+                return enrolledCourses.includes(selectedCourseId);
+            })
             : listeners;
         
         if (filteredListeners.length === 0) {
@@ -861,15 +993,16 @@ class LearningApp {
         const courses = DataManager.getCourses();
         
         const html = filteredListeners.map(listener => {
-            // Находим полного пользователя с данными
-            const fullUser = DataManager.data.users.find(u => u.id === listener.id);
-            if (!fullUser || !fullUser.testResults || fullUser.testResults.length === 0) {
+            // Находим полного пользователя с данными через API
+            const testResults = DataManager.parseTestResults(listener.testResults);
+            
+            if (!testResults || testResults.length === 0) {
                 return `
                     <div class="student-card">
                         <h4>${listener.username} <span style="font-size: 14px; color: #666;">(не проходил тестирование)</span></h4>
                         <div class="student-info">
                             <span>Роль: ${listener.roleName}</span>
-                            <span>Курсов: ${listener.enrolledCourses}</span>
+                            <span>Курсов: ${DataManager.parseEnrolledCourses(listener.enrolledCourses).length}</span>
                         </div>
                     </div>
                 `;
@@ -877,7 +1010,7 @@ class LearningApp {
             
             // Группируем результаты по курсам
             const resultsByCourse = {};
-            fullUser.testResults.forEach(result => {
+            testResults.forEach(result => {
                 // Находим курс по testId
                 const course = courses.find(c => c.testId === result.testId);
                 if (course) {
@@ -907,7 +1040,7 @@ class LearningApp {
             }
             
             // Считаем средний балл
-            const allPercentages = fullUser.testResults.map(r => r.percentage);
+            const allPercentages = testResults.map(r => r.percentage);
             const avgScore = allPercentages.length > 0 
                 ? Math.round(allPercentages.reduce((a, b) => a + b, 0) / allPercentages.length)
                 : 0;
@@ -920,8 +1053,8 @@ class LearningApp {
                     <h4>${listener.username} <span style="font-size: 18px; color: ${avgColor};">Средний балл: ${avgScore}%</span></h4>
                     <div class="student-info">
                         <span>Роль: ${listener.roleName}</span>
-                        <span>Записан на курсов: ${listener.enrolledCourses}</span>
-                        <span>Пройдено тестов: ${fullUser.testResults.length}</span>
+                        <span>Записан на курсов: ${DataManager.parseEnrolledCourses(listener.enrolledCourses).length}</span>
+                        <span>Пройдено тестов: ${testResults.length}</span>
                     </div>
                     <div class="results-by-course">
             ` + courseResults.map(cr => `
@@ -1073,6 +1206,72 @@ class LearningApp {
     closeModal() {
         const modal = document.getElementById('modal');
         modal.classList.remove('active');
+    }
+    
+    // Отписка пользователя от курса (developer)
+    async unsubscribeUser(userId, courseId) {
+        if (!confirm(`Отписать пользователя от курса?`)) return;
+        
+        try {
+            const response = await fetch(`/api/user/${userId}/enrollment/${courseId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                alert('Пользователь отписан от курса');
+                this.loadUsers();
+            } else {
+                const error = await response.json();
+                alert('Ошибка: ' + error.error);
+            }
+        } catch (error) {
+            console.error('Error unsubscribing user:', error);
+            alert('Произошла ошибка');
+        }
+    }
+    
+    // Очистка активности пользователя (developer)
+    async clearUserActivity(userId, courseId) {
+        if (!confirm(`Очистить всю активность пользователя в курсе?`)) return;
+        
+        try {
+            const response = await fetch(`/api/user/${userId}/activity/${courseId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                alert('Активность пользователя очищена');
+                this.loadUsers();
+            } else {
+                const error = await response.json();
+                alert('Ошибка: ' + error.error);
+            }
+        } catch (error) {
+            console.error('Error clearing activity:', error);
+            alert('Произошла ошибка');
+        }
+    }
+    
+    // Полный сброс данных пользователя (developer)
+    async resetUserCourse(userId, courseId) {
+        if (!confirm(`Сбросить ВСЕ данные пользователя (отписка + очистка активности)?`)) return;
+        
+        try {
+            const response = await fetch(`/api/user/${userId}/reset/${courseId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                alert('Данные пользователя сброшены');
+                this.loadUsers();
+            } else {
+                const error = await response.json();
+                alert('Ошибка: ' + error.error);
+            }
+        } catch (error) {
+            console.error('Error resetting user:', error);
+            alert('Произошла ошибка');
+        }
     }
 }
 
