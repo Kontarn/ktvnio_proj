@@ -31,31 +31,66 @@
 ## Структура проекта
 
 ```
-├── index.html      # Главная страница приложения
-├── styles.css      # Стили интерфейса
-├── app.js          # Основная логика приложения
-├── data.js         # Модуль управления данными (работа с API)
-└── README.md       # Документация
+├── public/             # Статические файлы (frontend)
+│   ├── index.html      # Главная страница приложения
+│   ├── styles.css      # Стили интерфейса
+│   ├── app.js          # Основная логика приложения
+│   └── data.js         # Модуль управления данными (работа с API)
+├── docs/               # Копия public/ для GitHub Pages
+├── server.js           # Node.js сервер (бэкенд)
+├── package.json        # Зависимости проекта
+├── README.md           # Документация
+└── .gitignore          # Исключения для Git
 ```
 
-## Запуск
+## Системные требования
 
-### Способ 1: Открыть напрямую
-1. Откройте файл `index.html` в браузере
+- **Node.js** версии 14.0.0 или выше
+- **npm** версии 6.0.0 или выше
+- Современный браузер с поддержкой ES6+ (Chrome, Firefox, Edge, Safari)
 
-### Способ 2: Локальный сервер (рекомендуется)
+## Зависимости
+
+Проект использует следующие npm-пакеты (указаны в `package.json`):
+
+```json
+{
+  "express": "^4.18.2",      # Веб-фреймворк для Node.js
+  "cors": "^2.8.5",          # Поддержка CORS
+  "bcryptjs": "^2.4.3",      # Хеширование паролей
+  "better-sqlite3": "^9.2.2" # SQLite драйвер для Node.js
+}
+```
+
+**nodemon** — утилита для автоматической перезагрузки сервера при разработке (devDependencies)
+
+## Установка и запуск
+
+### 1. Клонировать репозиторий
 ```bash
-# Python 3
-python -m http.server 8000
-
-# Python 2
-python -m SimpleHTTPServer 8000
-
-# Node.js (нужен http-server)
-npx http-server -p 8000
+git clone https://github.com/ваш-username/ваш-репозиторий.git
+cd ваш-репозиторий
 ```
 
-Затем откройте http://localhost:8000
+### 2. Установить зависимости
+```bash
+npm install
+```
+
+### 3. Запустить сервер
+```bash
+npm start
+```
+
+Или в фоновом режиме:
+```bash
+npm start &
+```
+
+Сервер запустится на **http://localhost:3000**
+
+### 4. Открыть в браузере
+Откройте **http://localhost:3000** в любом современном браузере
 
 ## Функциональность
 
@@ -108,11 +143,40 @@ npx http-server -p 8000
 
 ## Технологии
 
-- Node.js + Express
-- SQLite (sql.js)
-- Vanilla JavaScript (ES6+)
-- LocalStorage для хранения сессии пользователя
-- HTML5 + CSS3
+- **Backend**: Node.js + Express
+- **Database**: SQLite (better-sqlite3)
+- **Frontend**: Vanilla JavaScript (ES6+), HTML5, CSS3
+- **Authentication**: bcryptjs для хеширования паролей
+- **Session**: LocalStorage для хранения сессии пользователя
+
+## GitHub Pages
+
+Для публикации статической версии проекта:
+
+1. Папка `docs/` содержит копию файлов из `public/`
+2. В настройках репозитория включите GitHub Pages:
+   - **Settings → Pages**
+   - **Source**: `Deploy from a branch`
+   - **Branch**: `main`
+   - **Folder**: `/docs`
+
+**Важно:** На GitHub Pages работает только фронтенд. API и база данных не доступны, так как GitHub Pages — статический хостинг без Node.js.
+
+## Разработка
+
+### Запуск в режиме разработки
+```bash
+npm start
+```
+
+Сервер автоматически создаст базу данных `school.db` при первом запуске.
+
+### Пересоздание базы данных
+Если нужно сбросить все данные:
+```bash
+rm school.db
+npm start
+```
 
 ## Особенности
 
