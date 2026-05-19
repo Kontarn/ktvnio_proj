@@ -86,7 +86,7 @@ if (userCount.count === 0) {
   
   db.prepare(`
     INSERT INTO users (id, username, password, role, roleName, enrolledCourses, testResults, learningProgress)
-    VALUES (2, 'teacher', ?, 'teacher', 'Преподаватель', '[]', '[]', '{}')
+    VALUES (2, 'teacher', ?, 'teacher', 'Преподаватель', '[1]', '[]', '{}')
   `).run(hash2);
   
   db.prepare(`
@@ -130,9 +130,35 @@ if (courseCount.count === 0) {
     VALUES (1, 1, 60)
   `).run();
   
+  // Привязываем курс к преподавателю
+  db.prepare(`
+    UPDATE users SET enrolledCourses = '[1]' WHERE role = 'teacher'
+  `).run();
+  
   console.log('Курс, темы и тест созданы');
+  
+  // Привязываем курс к преподавателю
+  const teacher = db.prepare('SELECT * FROM users WHERE role = ?').get('teacher');
+  if (teacher) {
+    db.prepare('UPDATE users SET enrolledCourses = ? WHERE id = ?')
+      .run(JSON.stringify([1]), teacher.id);
+    console.log('Курс привязан к преподавателю');
+  }
 }
-
+  
+// Привязываем курсы к преподавателю (выполняется всегда)
+const courses = db.prepare('SELECT id FROM courses').all();
+const teacher = db.prepare('SELECT * FROM users WHERE role = ?').get('teacher');
+if (teacher && courses.length > 0) {
+  const teacherCourses = JSON.parse(teacher.enrolledCourses || '[]');
+  if (!Array.isArray(teacherCourses) || teacherCourses.length === 0) {
+    const courseIds = courses.map(c => c.id);
+    db.prepare('UPDATE users SET enrolledCourses = ? WHERE id = ?')
+      .run(JSON.stringify(courseIds), teacher.id);
+    console.log('Курсы привязаны к преподавателю');
+  }
+}
+  
 // ==================== API ROUTES ====================
 
 // Аутентификация
@@ -216,6 +242,36 @@ app.put('/api/user/:id', (req, res) => {
   const { password: _, ...userWithoutPassword } = user;
   
   res.json(userWithoutPassword);
+});
+
+// Смена пароля пользователя
+app.put('/api/user/:id/password', (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const userId = parseInt(req.params.id);
+  
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Требуются текущий и новый пароли' });
+  }
+  
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  
+  if (!user) {
+    return res.status(404).json({ error: 'Пользователь не найден' });
+  }
+  
+  // Проверяем текущий пароль
+  const validPassword = bcrypt.compareSync(currentPassword, user.password);
+  if (!validPassword) {
+    return res.status(401).json({ error: 'Неверный текущий пароль' });
+  }
+  
+  // Хешируем новый пароль
+  const hashedPassword = bcrypt.hashSync(newPassword, 10);
+  
+  // Обновляем пароль
+  db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, userId);
+  
+  res.json({ success: true, message: 'Пароль успешно изменён' });
 });
 
 // Запись на курс (для developer)

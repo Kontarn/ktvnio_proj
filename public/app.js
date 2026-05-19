@@ -105,6 +105,62 @@ class LearningApp {
         const courseFilter = document.getElementById('course-filter');
         if (courseFilter) courseFilter.addEventListener('change', async () => await this.loadStudentResults());
         
+        // Форма смены пароля
+        const changePasswordForm = document.getElementById('change-password-form');
+        if (changePasswordForm) {
+            changePasswordForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const currentPassword = document.getElementById('current-password').value;
+                const newPassword = document.getElementById('new-password').value;
+                const confirmPassword = document.getElementById('confirm-password').value;
+                
+                if (newPassword !== confirmPassword) {
+                    const messageDiv = document.getElementById('password-message');
+                    messageDiv.textContent = 'Новые пароли не совпадают';
+                    messageDiv.className = 'error';
+                    return;
+                }
+                
+                if (newPassword.length < 4) {
+                    const messageDiv = document.getElementById('password-message');
+                    messageDiv.textContent = 'Пароль должен быть не менее 4 символов';
+                    messageDiv.className = 'error';
+                    return;
+                }
+                
+                if (newPassword.includes(' ')) {
+                    const messageDiv = document.getElementById('password-message');
+                    messageDiv.textContent = 'Пароль не должен содержать пробелы';
+                    messageDiv.className = 'error';
+                    return;
+                }
+                
+                if (currentPassword === newPassword) {
+                    const messageDiv = document.getElementById('password-message');
+                    messageDiv.textContent = 'Новый пароль должен отличаться от текущего';
+                    messageDiv.className = 'error';
+                    return;
+                }
+                
+                if (newPassword.includes(' ')) {
+                    const messageDiv = document.getElementById('password-message');
+                    messageDiv.textContent = 'Пароль не может содержать пробелы';
+                    messageDiv.className = 'error';
+                    return;
+                }
+                
+                if (currentPassword === newPassword) {
+                    const messageDiv = document.getElementById('password-message');
+                    messageDiv.textContent = 'Новый пароль должен отличаться от текущего';
+                    messageDiv.className = 'error';
+                    return;
+                }
+                
+                await this.changePassword(currentPassword, newPassword);
+            });
+        }
+        
         // Модальное окно
         const modalClose = document.querySelector('.modal-close');
         const modal = document.getElementById('modal');
@@ -311,6 +367,9 @@ class LearningApp {
             case 'calculator':
                 this.loadCalculator();
                 break;
+            case 'profile':
+                this.loadProfile();
+                break;
             case 'student-results':
                 this.loadStudentResults();
                 break;
@@ -330,17 +389,31 @@ class LearningApp {
         
         const stats = DataManager.getStats();
         
-        document.getElementById('courses-count').textContent = (stats?.enrolledCourses || 0) + ' курсов';
-        document.getElementById('tests-completed').textContent = stats?.testsCompleted || 0;
-        document.getElementById('average-score').textContent = (stats?.averageScore || 0) + '%';
+        // Для преподавателя показываем количество его курсов
+        if (user.role === 'teacher') {
+            const enrolledCourses = DataManager.parseEnrolledCourses(user.enrolledCourses);
+            document.getElementById('courses-count').textContent = enrolledCourses.length + ' курсов';
+            document.getElementById('tests-completed').textContent = '—';
+            document.getElementById('average-score').textContent = '—';
+        } else {
+            document.getElementById('courses-count').textContent = (stats?.enrolledCourses || 0) + ' курсов';
+            document.getElementById('tests-completed').textContent = stats?.testsCompleted || 0;
+            document.getElementById('average-score').textContent = (stats?.averageScore || 0) + '%';
+        }
         document.getElementById('time-spent').textContent = 'В системе';
     }
-    
+        
     // Загрузка курсов
     loadCourses() {
         const coursesList = document.getElementById('courses-list');
-        const courses = DataManager.getCourses();
+        let courses = DataManager.getCourses();
         const user = DataManager.getCurrentUser();
+        
+        // Для преподавателя показываем только его курсы
+        if (user.role === 'teacher') {
+            const enrolledCourses = DataManager.parseEnrolledCourses(user.enrolledCourses);
+            courses = courses.filter(course => enrolledCourses.includes(course.id));
+        }
         
         const enrolledCourses = DataManager.parseEnrolledCourses(user.enrolledCourses);
         
@@ -901,6 +974,50 @@ class LearningApp {
         } catch (error) {
             console.error('Ошибка загрузки логов:', error);
             logsContent.innerHTML = '<p>Ошибка загрузки журналов событий</p>';
+        }
+    }
+    
+    // Загрузка профиля
+    loadProfile() {
+        const user = DataManager.getCurrentUser();
+        if (!user) return;
+        
+        // Заполняем информацию о пользователе
+        document.getElementById('profile-username').textContent = user.username;
+        document.getElementById('profile-role').textContent = user.roleName;
+        
+        // Очищаем форму
+        document.getElementById('change-password-form').reset();
+        document.getElementById('password-message').textContent = '';
+        document.getElementById('password-message').className = '';
+    }
+    
+    // Смена пароля
+    async changePassword(currentPassword, newPassword) {
+        const user = DataManager.getCurrentUser();
+        const messageDiv = document.getElementById('password-message');
+        
+        try {
+            const response = await fetch(`/api/user/${user.id}/password`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                messageDiv.textContent = 'Пароль успешно изменён!';
+                messageDiv.className = 'success';
+                document.getElementById('change-password-form').reset();
+            } else {
+                messageDiv.textContent = data.error || 'Ошибка смены пароля';
+                messageDiv.className = 'error';
+            }
+        } catch (error) {
+            console.error('Error changing password:', error);
+            messageDiv.textContent = 'Произошла ошибка при смене пароля';
+            messageDiv.className = 'error';
         }
     }
     

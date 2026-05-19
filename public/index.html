@@ -79,6 +79,10 @@
                         <span class="nav-icon">🧮</span>
                         <span>Калькулятор уравнений</span>
                     </li>
+                    <li class="nav-item" data-section="profile" id="nav-profile">
+                        <span class="nav-icon">⚙️</span>
+                        <span>Настройки профиля</span>
+                    </li>
                     <li class="nav-item teacher-only" data-section="student-results" id="nav-student-results">
                         <span class="nav-icon">📊</span>
                         <span>Результаты учеников</span>
@@ -247,6 +251,37 @@
                         <button id="refresh-logs-btn" class="btn btn-secondary">Обновить</button>
                     </div>
                     <div id="logs-content"></div>
+                </section>
+
+                <!-- Секция: Профиль и настройки -->
+                <section id="section-profile" class="content-section">
+                    <h2>Настройки профиля</h2>
+                    <div class="profile-container">
+                        <div class="profile-info">
+                            <h3>Информация о пользователе</h3>
+                            <p><strong>Имя пользователя:</strong> <span id="profile-username"></span></p>
+                            <p><strong>Роль:</strong> <span id="profile-role"></span></p>
+                        </div>
+                        <div class="change-password">
+                            <h3>Смена пароля</h3>
+                            <form id="change-password-form">
+                                <div class="form-group">
+                                    <label for="current-password">Текущий пароль:</label>
+                                    <input type="password" id="current-password" required placeholder="Введите текущий пароль">
+                                </div>
+                                <div class="form-group">
+                                    <label for="new-password">Новый пароль:</label>
+                                    <input type="password" id="new-password" required placeholder="Введите новый пароль">
+                                </div>
+                                <div class="form-group">
+                                    <label for="confirm-password">Подтвердите новый пароль:</label>
+                                    <input type="password" id="confirm-password" required placeholder="Повторите новый пароль">
+                                </div>
+                                <button type="submit" class="btn btn-primary">Изменить пароль</button>
+                            </form>
+                            <div id="password-message"></div>
+                        </div>
+                    </div>
                 </section>
             </main>
         </div>
