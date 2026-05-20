@@ -299,6 +299,13 @@ class LearningApp {
             item.style.display = isAdmin ? 'flex' : 'none';
         });
         
+        // Показываем/скрываем пункты меню для developer и support
+        const devSupportItems = document.querySelectorAll('.developer-support-only');
+        const isDevSupport = DataManager.hasRole(['developer', 'support']);
+        devSupportItems.forEach(item => {
+            item.style.display = isDevSupport ? 'flex' : 'none';
+        });
+        
         // Показываем/скрываем пункты меню для преподавателей
         const teacherItems = document.querySelectorAll('.teacher-only');
         const isTeacher = DataManager.hasRole('teacher');
@@ -306,18 +313,19 @@ class LearningApp {
             item.style.display = isTeacher ? 'flex' : 'none';
         });
         
-        // Показываем/скрываем пункты меню только для слушателей
+        // Показываем/скрываем пункты меню только для слушателей и developer
         const studentItems = document.querySelectorAll('.student-only');
         const isStudent = DataManager.hasRole('listener');
         studentItems.forEach(item => {
             item.style.display = isStudent ? 'flex' : 'none';
         });
         
-        // Обновляем видимость пунктов меню, требующих записанных курсов
-        this.updateMenuVisibility();
-        
-        // Загружаем контент
-        this.navigate('dashboard');
+        // Показываем/скрываем пункты меню для слушателей и developer
+        const studentDevItems = document.querySelectorAll('.student-dev-only');
+        const isStudentOrDev = DataManager.hasRole(['listener', 'developer']);
+        studentDevItems.forEach(item => {
+            item.style.display = isStudentOrDev ? 'flex' : 'none';
+        });
     }
     
     // Навигация по секциям

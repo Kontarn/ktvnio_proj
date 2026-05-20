@@ -490,7 +490,11 @@ const DataManager = {
     async saveTestResult(testId, score, correctAnswers, totalQuestions) {
         if (!this.currentUser) return;
         
-        const testResults = [...(this.currentUser.testResults || [])];
+        // Загружаем свежие данные пользователя из БД
+        const freshUser = await this.fetchUser(this.currentUser.id);
+        if (!freshUser) return;
+        
+        const testResults = this.parseTestResults(freshUser.testResults);
         testResults.push({
             testId,
             testTitle: 'Квадратные уравнения',
