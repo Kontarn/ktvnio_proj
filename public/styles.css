@@ -1028,7 +1028,61 @@ body {
     margin-top: 15px;
     padding: 10px;
     border-radius: 5px;
+    display: none;
+}
+
+#password-message.success {
+    background-color: #d4edda;
+    color: #155724;
+    display: block;
+}
+
+#password-message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    display: block;
+}
+
+#register-message {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 5px;
+    display: none;
+}
+
+#register-message.success {
+    background-color: #d4edda;
+    color: #155724;
+    display: block;
+}
+
+#register-message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    display: block;
+}
+
+/* Модальное окно подтверждения */
+.confirm-modal .modal-content {
+    max-width: 400px;
     text-align: center;
+}
+
+.confirm-modal h3 {
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.confirm-modal #confirm-modal-message {
+    margin-bottom: 25px;
+    color: #666;
+    font-size: 15px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
 }
 
 #password-message.success {

@@ -477,28 +477,28 @@ class LearningApp {
     
     // Отписка от курса (для developer)
     async unsubscribeFromCourse(courseId) {
-        if (!confirm('Вы уверены, что хотите отписаться от курса?')) return;
-        
-        try {
-            const user = DataManager.getCurrentUser();
-            const response = await fetch(`/api/user/${user.id}/enrollment/${courseId}`, {
-                method: 'DELETE'
-            });
-            
-            if (response.ok) {
-                alert('Вы отписаны от курса');
-                this.loadCourses();
-                this.updateMenuVisibility();
-            } else {
-                const error = await response.json();
-                alert('Ошибка: ' + error.error);
+        await this.showConfirmModal('Вы уверены, что хотите отписаться от курса?', async () => {
+            try {
+                const user = DataManager.getCurrentUser();
+                const response = await fetch(`/api/user/${user.id}/enrollment/${courseId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    alert('Вы отписаны от курса');
+                    this.loadCourses();
+                    this.updateMenuVisibility();
+                } else {
+                    const error = await response.json();
+                    alert('Ошибка: ' + error.error);
+                }
+            } catch (error) {
+                console.error('Error unsubscribing:', error);
+                alert('Произошла ошибка');
             }
-        } catch (error) {
-            console.error('Error unsubscribing:', error);
-            alert('Произошла ошибка');
-        }
+        });
     }
-    
+            
     // Запись на курс
     async enrollToCourse(courseId) {
         const user = DataManager.getCurrentUser();
@@ -910,6 +910,10 @@ class LearningApp {
         const users = await DataManager.getAllUsers();
         const currentUser = DataManager.getCurrentUser();
         const isDeveloper = currentUser && currentUser.role === 'developer';
+        const isSupport = currentUser && currentUser.role === 'support';
+        
+        // Заполняем форму регистрации
+        await this.setupRegistrationForm();
         
         const usersHtml = users.map(user => {
             const enrolledCourses = DataManager.parseEnrolledCourses(user.enrolledCourses);
@@ -917,24 +921,62 @@ class LearningApp {
             const coursesList = enrolledCourses ? enrolledCourses.join(', ') : 'Нет';
             const testResults = DataManager.parseTestResults(user.testResults);
             const testCount = testResults ? testResults.length : 0;
+            const isCurrentUser = user.id === currentUser.id;
             
             let actionButtons = '';
-            if (isDeveloper && user.role === 'listener') {
-                actionButtons = `
-                    <div class="user-actions">
-                        ${isEnrolled ? `
-                            <button class="btn btn-danger btn-sm" onclick="app.unsubscribeUser(${user.id}, 1)">
-                                Отписать от курса
-                            </button>
-                            <button class="btn btn-warning btn-sm" onclick="app.clearUserActivity(${user.id}, 1)">
-                                Очистить активность
-                            </button>
-                            <button class="btn btn-danger btn-sm" onclick="app.resetUserCourse(${user.id}, 1)">
-                                Сбросить всё
-                            </button>
-                        ` : '<span style="color: #999; font-size: 12px;">Не записан на курсы</span>'}
-                    </div>
-                `;
+            
+            // Developer может удалять всех (кроме себя)
+            if (isDeveloper && user.id !== currentUser.id) {
+                let deleteButton = `<button class="btn btn-danger btn-sm" onclick="app.deleteUser(${user.id})">🗑️ Удалить</button>`;
+                
+                if (user.role === 'listener') {
+                    actionButtons = `
+                        <div class="user-actions">
+                            ${isEnrolled ? `
+                                <button class="btn btn-danger btn-sm" onclick="app.unsubscribeUser(${user.id}, 1)">
+                                    Отписать от курса
+                                </button>
+                                <button class="btn btn-warning btn-sm" onclick="app.clearUserActivity(${user.id}, 1)">
+                                    Очистить активность
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="app.resetUserCourse(${user.id}, 1)">
+                                    Сбросить всё
+                                </button>
+                            ` : '<span style="color: #999; font-size: 12px;">Не записан на курсы</span>'}
+                            ${deleteButton}
+                        </div>
+                    `;
+                } else {
+                    // Для teacher, support, developer - только удаление
+                    actionButtons = `<div class="user-actions">${deleteButton}</div>`;
+                }
+            }
+            
+            // Support может удалять teacher и listener (кроме себя)
+            if (isSupport && user.id !== currentUser.id && (user.role === 'teacher' || user.role === 'listener')) {
+                let deleteButton = `<button class="btn btn-danger btn-sm" onclick="app.deleteUser(${user.id})">🗑️ Удалить</button>`;
+                
+                if (user.role === 'listener') {
+                    actionButtons = `
+                        <div class="user-actions">
+                            ${isEnrolled ? `
+                                <button class="btn btn-danger btn-sm" onclick="app.unsubscribeUser(${user.id}, 1)">
+                                    Отписать от курса
+                                </button>
+                                <button class="btn btn-warning btn-sm" onclick="app.clearUserActivity(${user.id}, 1)">
+                                    Очистить активность
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="app.resetUserCourse(${user.id}, 1)">
+                                    Сбросить всё
+                                </button>
+                            ` : '<span style="color: #999; font-size: 12px;">Не записан на курсы</span>'}
+                            ${deleteButton}
+                        </div>
+                    `;
+                } else {
+                    // Для teacher - только удаление
+                    actionButtons = `<div class="user-actions">${deleteButton}</div>`;
+                }
             }
             
             return `
@@ -960,7 +1002,7 @@ class LearningApp {
                         <th>Курсы</th>
                         <th>Тесты</th>
                         <th>Последний вход</th>
-                        ${isDeveloper ? '<th>Действия</th>' : ''}
+                        ${(isDeveloper || isSupport) ? '<th>Действия</th>' : ''}
                     </tr>
                 </thead>
                 <tbody>
@@ -970,6 +1012,107 @@ class LearningApp {
         `;
     }
         
+    // Настройка формы регистрации
+    async setupRegistrationForm() {
+        const roleSelect = document.getElementById('reg-role');
+        const currentUser = DataManager.getCurrentUser();
+        
+        if (!roleSelect || !currentUser) return;
+        
+        // Очищаем опции
+        roleSelect.innerHTML = '';
+        
+        // Добавляем доступные роли в зависимости от роли текущего пользователя
+        if (currentUser.role === 'developer') {
+            // Developer может регистрировать ВСЕХ
+            const developerRoles = [
+                { value: 'listener', text: 'listener' },
+                { value: 'teacher', text: 'teacher' },
+                { value: 'support', text: 'support' },
+                { value: 'developer', text: 'developer' }
+            ];
+            developerRoles.forEach(role => {
+                const option = document.createElement('option');
+                option.value = role.value;
+                option.textContent = role.text;
+                roleSelect.appendChild(option);
+            });
+        } else if (currentUser.role === 'support') {
+            // Support может регистрировать только teacher и listener
+            const supportRoles = [
+                { value: 'listener', text: 'listener' },
+                { value: 'teacher', text: 'teacher' }
+            ];
+            supportRoles.forEach(role => {
+                const option = document.createElement('option');
+                option.value = role.value;
+                option.textContent = role.text;
+                roleSelect.appendChild(option);
+            });
+        }
+        
+        // Настраиваем обработчик формы
+        const form = document.getElementById('register-user-form');
+        if (form) {
+            form.removeEventListener('submit', this.handleRegistration);
+            form.addEventListener('submit', this.handleRegistration);
+        }
+    }
+    
+    // Обработка регистрации нового пользователя
+    async handleRegistration(e) {
+        e.preventDefault();
+        
+        const username = document.getElementById('reg-username').value.trim();
+        const password = document.getElementById('reg-password').value;
+        const role = document.getElementById('reg-role').value;
+        const messageDiv = document.getElementById('register-message');
+        
+        // Валидация
+        if (!username || username.length < 3) {
+            messageDiv.textContent = 'Имя пользователя должно быть не менее 3 символов';
+            messageDiv.className = 'error';
+            return;
+        }
+        
+        if (!password || password.length < 4) {
+            messageDiv.textContent = 'Пароль должен быть не менее 4 символов';
+            messageDiv.className = 'error';
+            return;
+        }
+        
+        if (password.includes(' ')) {
+            messageDiv.textContent = 'Пароль не должен содержать пробелы';
+            messageDiv.className = 'error';
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/user/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password, role })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                messageDiv.textContent = 'Пользователь успешно зарегистрирован!';
+                messageDiv.className = 'success';
+                document.getElementById('register-user-form').reset();
+                // Обновляем таблицу пользователей
+                await app.loadUsers();
+            } else {
+                messageDiv.textContent = data.error || 'Ошибка регистрации';
+                messageDiv.className = 'error';
+            }
+        } catch (error) {
+            console.error('Error registering user:', error);
+            messageDiv.textContent = 'Произошла ошибка при регистрации';
+            messageDiv.className = 'error';
+        }
+    }
+    
     // Загрузка журналов событий (админ)
     async loadLogs() {
         const logsContent = document.getElementById('logs-content');
@@ -1354,68 +1497,124 @@ class LearningApp {
     
     // Отписка пользователя от курса (developer)
     async unsubscribeUser(userId, courseId) {
-        if (!confirm(`Отписать пользователя от курса?`)) return;
-        
-        try {
-            const response = await fetch(`/api/user/${userId}/enrollment/${courseId}`, {
-                method: 'DELETE'
-            });
-            
-            if (response.ok) {
-                alert('Пользователь отписан от курса');
-                this.loadUsers();
-            } else {
-                const error = await response.json();
-                alert('Ошибка: ' + error.error);
+        await this.showConfirmModal('Отписать пользователя от курса?', async () => {
+            try {
+                const response = await fetch(`/api/user/${userId}/enrollment/${courseId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    alert('Пользователь отписан от курса');
+                    this.loadUsers();
+                } else {
+                    const error = await response.json();
+                    alert('Ошибка: ' + error.error);
+                }
+            } catch (error) {
+                console.error('Error unsubscribing user:', error);
+                alert('Произошла ошибка');
             }
-        } catch (error) {
-            console.error('Error unsubscribing user:', error);
-            alert('Произошла ошибка');
-        }
+        });
     }
     
     // Очистка активности пользователя (developer)
     async clearUserActivity(userId, courseId) {
-        if (!confirm(`Очистить всю активность пользователя в курсе?`)) return;
-        
-        try {
-            const response = await fetch(`/api/user/${userId}/activity/${courseId}`, {
-                method: 'DELETE'
-            });
-            
-            if (response.ok) {
-                alert('Активность пользователя очищена');
-                this.loadUsers();
-            } else {
-                const error = await response.json();
-                alert('Ошибка: ' + error.error);
+        await this.showConfirmModal('Очистить всю активность пользователя в курсе?', async () => {
+            try {
+                const response = await fetch(`/api/user/${userId}/activity/${courseId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    alert('Активность пользователя очищена');
+                    this.loadUsers();
+                } else {
+                    const error = await response.json();
+                    alert('Ошибка: ' + error.error);
+                }
+            } catch (error) {
+                console.error('Error clearing activity:', error);
+                alert('Произошла ошибка');
             }
-        } catch (error) {
-            console.error('Error clearing activity:', error);
-            alert('Произошла ошибка');
-        }
+        });
     }
     
     // Полный сброс данных пользователя (developer)
     async resetUserCourse(userId, courseId) {
-        if (!confirm(`Сбросить ВСЕ данные пользователя (отписка + очистка активности)?`)) return;
-        
-        try {
-            const response = await fetch(`/api/user/${userId}/reset/${courseId}`, {
-                method: 'DELETE'
-            });
-            
-            if (response.ok) {
-                alert('Данные пользователя сброшены');
-                this.loadUsers();
-            } else {
-                const error = await response.json();
-                alert('Ошибка: ' + error.error);
+        await this.showConfirmModal('Сбросить ВСЕ данные пользователя (отписка + очистка активности)?', async () => {
+            try {
+                const response = await fetch(`/api/user/${userId}/reset/${courseId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    alert('Данные пользователя сброшены');
+                    this.loadUsers();
+                } else {
+                    const error = await response.json();
+                    alert('Ошибка: ' + error.error);
+                }
+            } catch (error) {
+                console.error('Error resetting user:', error);
+                alert('Произошла ошибка');
             }
-        } catch (error) {
-            console.error('Error resetting user:', error);
-            alert('Произошла ошибка');
+        });
+    }
+    
+    // Удаление пользователя (developer и support)
+    async deleteUser(userId) {
+        const user = DataManager.getCurrentUser();
+        if (!user) return;
+        
+        if (user.id === userId) {
+            alert('Нельзя удалить самого себя!');
+            return;
         }
+        
+        await this.showConfirmModal('Вы уверены, что хотите удалить пользователя? Это действие нельзя отменить.', async () => {
+            try {
+                const response = await fetch(`/api/user/${userId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    alert('Пользователь успешно удалён');
+                    this.loadUsers();
+                } else {
+                    const error = await response.json();
+                    alert('Ошибка: ' + error.error);
+                }
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                alert('Произошла ошибка');
+            }
+        });
+    }
+    
+    // Кастомное модальное окно подтверждения
+    showConfirmModal(message, onConfirm) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('confirm-modal');
+            const modalMessage = document.getElementById('confirm-modal-message');
+            const confirmBtn = document.getElementById('confirm-modal-confirm');
+            const cancelBtn = document.getElementById('confirm-modal-cancel');
+            
+            modalMessage.textContent = message;
+            
+            // Очищаем предыдущие обработчики
+            confirmBtn.onclick = () => {
+                modal.classList.remove('active');
+                onConfirm();
+                resolve();
+            };
+            
+            cancelBtn.onclick = () => {
+                modal.classList.remove('active');
+                resolve();
+            };
+            
+            modal.classList.add('active');
+        });
     }
 }
 

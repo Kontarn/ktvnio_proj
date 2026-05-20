@@ -226,6 +226,32 @@
                 <!-- Секция: Пользователи (админ) -->
                 <section id="section-users" class="content-section">
                     <h2>Управление пользователями</h2>
+                    
+                    <!-- Форма регистрации нового пользователя -->
+                    <div class="register-user-form" style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                        <h3>📝 Регистрация нового пользователя</h3>
+                        <form id="register-user-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="reg-username">Имя пользователя:</label>
+                                    <input type="text" id="reg-username" required placeholder="Введите логин">
+                                </div>
+                                <div class="form-group">
+                                    <label for="reg-password">Пароль:</label>
+                                    <input type="password" id="reg-password" required placeholder="Введите пароль" minlength="4">
+                                </div>
+                                <div class="form-group">
+                                    <label for="reg-role">Роль:</label>
+                                    <select id="reg-role" required>
+                                        <!-- Опции будут добавлены динамически в зависимости от роли -->
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Зарегистрировать</button>
+                        </form>
+                        <div id="register-message"></div>
+                    </div>
+                    
                     <div id="users-list"></div>
                 </section>
 
@@ -292,6 +318,18 @@
         <div class="modal-content">
             <span class="modal-close">&times;</span>
             <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Модальное окно подтверждения -->
+    <div id="confirm-modal" class="modal confirm-modal">
+        <div class="modal-content modal-confirm">
+            <h3>Подтверждение</h3>
+            <p id="confirm-modal-message"></p>
+            <div class="modal-actions">
+                <button id="confirm-modal-cancel" class="btn btn-secondary">Отмена</button>
+                <button id="confirm-modal-confirm" class="btn btn-danger">Да, удалить</button>
+            </div>
         </div>
     </div>
 

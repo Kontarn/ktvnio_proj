@@ -491,6 +491,79 @@ app.get('/api/users', (req, res) => {
   res.json(usersWithoutPassword);
 });
 
+// Регистрация нового пользователя (для developer и support)
+app.post('/api/user/register', (req, res) => {
+  const { username, password, role } = req.body;
+  
+  // Валидация
+  if (!username || username.length < 3) {
+    return res.status(400).json({ error: 'Имя пользователя должно быть не менее 3 символов' });
+  }
+  
+  if (!password || password.length < 4) {
+    return res.status(400).json({ error: 'Пароль должен быть не менее 4 символов' });
+  }
+  
+  if (!role || !['listener', 'teacher', 'support', 'developer'].includes(role)) {
+    return res.status(400).json({ error: 'Недопустимая роль' });
+  }
+  
+  // Проверяем существование пользователя
+  const existingUser = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+  if (existingUser) {
+    return res.status(409).json({ error: 'Пользователь с таким именем уже существует' });
+  }
+  
+  // Определяем roleName
+  const roleNames = {
+    'listener': 'Слушатель',
+    'teacher': 'Преподаватель',
+    'support': 'Техническая поддержка',
+    'developer': 'Разработчик'
+  };
+  
+  // Получаем следующий ID
+  const maxId = db.prepare('SELECT MAX(id) as maxId FROM users').get();
+  const newId = (maxId.maxId || 0) + 1;
+  
+  // Хешируем пароль
+  const hashedPassword = bcrypt.hashSync(password, 10);
+  
+  // Создаём пользователя
+  db.prepare(`
+    INSERT INTO users (id, username, password, role, roleName, enrolledCourses, testResults, learningProgress)
+    VALUES (?, ?, ?, ?, ?, '[]', '[]', '{}')
+  `).run(newId, username, hashedPassword, role, roleNames[role]);
+  
+  const newUser = db.prepare('SELECT * FROM users WHERE id = ?').get(newId);
+  const { password: _, ...userWithoutPassword } = newUser;
+  
+  res.status(201).json(userWithoutPassword);
+});
+
+// Удаление пользователя (для developer и support)
+app.delete('/api/user/:id', (req, res) => {
+  const userId = parseInt(req.params.id);
+  
+  // Проверяем, что пользователь существует
+  const userToDelete = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  
+  if (!userToDelete) {
+    return res.status(404).json({ error: 'Пользователь не найден' });
+  }
+  
+  // Нельзя удалить системных пользователей с id <= 2 (listener, teacher)
+  // developer и support могут быть созданы повторно и их можно удалять
+  if (userToDelete.id <= 2) {
+    return res.status(403).json({ error: 'Нельзя удалить системных пользователей' });
+  }
+  
+  // Удаляем пользователя
+  db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+  
+  res.json({ success: true, message: 'Пользователь успешно удалён' });
+});
+
 // Получение курсов
 app.get('/api/courses', (req, res) => {
   const courses = db.prepare('SELECT * FROM courses').all();
