@@ -326,6 +326,13 @@ class LearningApp {
         studentDevItems.forEach(item => {
             item.style.display = isStudentOrDev ? 'flex' : 'none';
         });
+        
+        // Показываем/скрываем пункты меню для слушателей, teacher и developer
+        const studentTeacherDevItems = document.querySelectorAll('.student-teacher-dev-only');
+        const isStudentTeacherOrDev = DataManager.hasRole(['listener', 'teacher', 'developer']);
+        studentTeacherDevItems.forEach(item => {
+            item.style.display = isStudentTeacherOrDev ? 'flex' : 'none';
+        });
     }
     
     // Навигация по секциям
@@ -424,11 +431,31 @@ class LearningApp {
         }
         
         const enrolledCourses = DataManager.parseEnrolledCourses(user.enrolledCourses);
+        const isDeveloper = user.role === 'developer';
         
         coursesList.innerHTML = courses.map(course => {
             const isEnrolled = enrolledCourses.includes(course.id);
             const statusClass = isEnrolled ? 'status-enrolled' : 'status-available';
             const statusText = isEnrolled ? 'Записан' : 'Доступен';
+            
+            let buttonHtml = '';
+            if (isEnrolled) {
+                if (isDeveloper) {
+                    // Developer может отписаться
+                    buttonHtml = `
+                        <button class="btn btn-primary" onclick="app.navigateToLearning(${course.id})">
+                            К изучению
+                        </button>
+                        <button class="btn btn-danger" onclick="app.unsubscribeFromCourse(${course.id})" style="margin-left: 10px;">
+                            Отписаться
+                        </button>
+                    `;
+                } else {
+                    buttonHtml = `<button class="btn btn-primary" onclick="app.navigateToLearning(${course.id})">К изучению</button>`;
+                }
+            } else {
+                buttonHtml = `<button class="btn btn-primary" onclick="app.enrollToCourse(${course.id})">Записаться на курс</button>`;
+            }
             
             return `
                 <div class="course-card">
@@ -437,12 +464,39 @@ class LearningApp {
                     <p>${course.description}</p>
                     <p><strong>Преподаватель:</strong> ${course.instructor}</p>
                     <p><strong>Длительность:</strong> ${course.duration}</p>
-                    <button class="btn btn-primary" onclick="app.enrollToCourse(${course.id})">
-                        ${isEnrolled ? 'К изучению' : 'Записаться на курс'}
-                    </button>
+                    ${buttonHtml}
                 </div>
             `;
         }).join('');
+    }
+    
+    // Навигация к изучению курса
+    navigateToLearning(courseId) {
+        this.navigate('learning');
+    }
+    
+    // Отписка от курса (для developer)
+    async unsubscribeFromCourse(courseId) {
+        if (!confirm('Вы уверены, что хотите отписаться от курса?')) return;
+        
+        try {
+            const user = DataManager.getCurrentUser();
+            const response = await fetch(`/api/user/${user.id}/enrollment/${courseId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                alert('Вы отписаны от курса');
+                this.loadCourses();
+                this.updateMenuVisibility();
+            } else {
+                const error = await response.json();
+                alert('Ошибка: ' + error.error);
+            }
+        } catch (error) {
+            console.error('Error unsubscribing:', error);
+            alert('Произошла ошибка');
+        }
     }
     
     // Запись на курс
