@@ -44,9 +44,12 @@
         <!-- Главный экран после входа -->
         <div id="main-screen" class="screen">
             <header class="header">
-                <div class="header-left">
-                    <h1>Система Дистанционного Обучения</h1>
-                </div>
+                <button class="menu-toggle" id="menu-toggle" aria-label="Меню">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <h1>Система обучения</h1>
                 <div class="header-right">
                     <span id="user-info"></span>
                     <button id="logout-btn" class="btn btn-secondary">Выйти</button>
@@ -97,6 +100,7 @@
                     </li>
                 </ul>
             </nav>
+            <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
             <main class="content">
                 <!-- Секция: Главная -->

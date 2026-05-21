@@ -232,7 +232,7 @@ body {
 .header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    padding: 15px 30px;
+    padding: 15px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -245,13 +245,50 @@ body {
 }
 
 .header h1 {
-    font-size: 24px;
+    font-size: clamp(18px, 2vw, 24px);
+    flex: 1;
+    text-align: center;
 }
 
 .header-right {
     display: flex;
     align-items: center;
     gap: 20px;
+}
+
+/* Гамбургер-меню */
+.menu-toggle {
+    display: none;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 30px;
+    height: 21px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    z-index: 1001;
+}
+
+.menu-toggle span {
+    display: block;
+    width: 100%;
+    height: 3px;
+    background: white;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+.menu-toggle.active span:nth-child(1) {
+    transform: rotate(45deg) translate(6px, 6px);
+}
+
+.menu-toggle.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.menu-toggle.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -7px);
 }
 
 #user-info {
@@ -275,13 +312,14 @@ body {
 /* Навигация */
 .sidebar {
     background-color: #2c3e50;
-    width: 250px;
+    width: clamp(200px, 15vw, 250px);
     position: fixed;
     top: 70px;
     left: 0;
     height: calc(100vh - 70px);
     overflow-y: auto;
     z-index: 900;
+    transition: transform 0.3s ease;
 }
 
 .nav-menu {
@@ -297,6 +335,16 @@ body {
     align-items: center;
     gap: 12px;
     color: #ecf0f1;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.nav-item span:not(.nav-icon) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex: 1;
 }
 
 .nav-item:hover {
@@ -309,7 +357,7 @@ body {
 }
 
 .nav-icon {
-    font-size: 18px;
+    font-size: clamp(16px, 1.5vw, 18px);
 }
 
 /* Контент */
@@ -1138,41 +1186,427 @@ body {
     color: #333;
 }
 
-/* Адаптивность */
+/* Адаптивность и масштабирование */
+
+/* Основные адаптивные стили */
+.header {
+    padding: 15px 20px;
+}
+
+.header h1 {
+    font-size: clamp(18px, 2vw, 24px);
+}
+
+.sidebar {
+    width: clamp(200px, 15vw, 280px);
+}
+
+.content {
+    margin-left: clamp(200px, 15vw, 280px);
+    padding: clamp(15px, 2vw, 30px);
+}
+
+/* Адаптивные таблицы */
+.users-table,
+.results-table,
+.logs-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+/* Адаптивные карточки */
+.dashboard-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+}
+
+#courses-list {
+    grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+}
+
+/* Адаптивный калькулятор */
+.calculator-container {
+    grid-template-columns: repeat(auto-fit, minmax(min(400px, 100%), 1fr));
+}
+
+/* Адаптивные формы */
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.form-row .form-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+.equation-input {
+    flex-wrap: wrap;
+}
+
+/* Адаптивное модальное окно */
+.modal-content {
+    width: clamp(90%, 95vw, 600px);
+    padding: clamp(20px, 3vw, 30px);
+}
+
+.confirm-modal .modal-content {
+    max-width: clamp(90%, 95vw, 400px);
+}
+
+/* Адаптивные кнопки */
+.btn {
+    padding: clamp(10px, 1.5vw, 12px) clamp(16px, 2vw, 24px);
+    font-size: clamp(14px, 1.5vw, 16px);
+}
+
+.btn-sm {
+    padding: clamp(4px, 0.8vw, 5px) clamp(8px, 1.2vw, 10px);
+    font-size: clamp(11px, 1vw, 12px);
+}
+
+/* Адаптивные шрифты */
+.content-section h2 {
+    font-size: clamp(20px, 2.5vw, 28px);
+}
+
+.dashboard-card p {
+    font-size: clamp(24px, 4vw, 32px);
+}
+
+/* Адаптивное обучение */
+.learning-container {
+    width: min(95%, 800px);
+    margin: 0 auto;
+    padding: clamp(15px, 2vw, 30px);
+}
+
+#learning-content {
+    padding: clamp(15px, 2vw, 30px);
+}
+
+.learning-content {
+    font-size: clamp(14px, 1.2vw, 16px);
+}
+
+/* Адаптивные фильтры */
+.logs-filters,
+.student-results-filters {
+    flex-wrap: wrap;
+    gap: clamp(10px, 1.5vw, 20px);
+}
+
+.logs-filters label,
+.student-results-filters label {
+    flex: 1;
+    min-width: 200px;
+}
+
+/* Адаптивные карточки студентов */
+.student-card h4 {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.student-info {
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.student-info span {
+    flex: 1;
+    min-width: 150px;
+}
+
+.course-result .result-details {
+    flex-wrap: wrap;
+}
+
+/* Адаптивные поля ввода */
+.form-group input,
+.input-group input {
+    font-size: clamp(14px, 1.5vw, 16px);
+    padding: clamp(10px, 1.5vw, 12px);
+}
+
+/* Адаптивные иконки */
+.nav-icon {
+    font-size: clamp(16px, 1.5vw, 18px);
+}
+
+.nav-item {
+    padding: clamp(12px, 1.5vw, 15px) clamp(20px, 2vw, 25px);
+    font-size: clamp(14px, 1.2vw, 16px);
+}
+
+/* Медиа-запросы для планшетов */
+@media (max-width: 1024px) {
+    .sidebar {
+        width: 220px;
+    }
+
+    .content {
+        margin-left: 220px;
+    }
+
+    .calculator-container {
+        grid-template-columns: 1fr;
+    }
+
+    .learning-container {
+        width: 95%;
+    }
+}
+
+/* Медиа-запросы для мобильных */
 @media (max-width: 768px) {
     .header {
         position: fixed;
-        flex-direction: column;
+        padding: 12px 15px;
+    }
+
+    .header h1 {
+        font-size: 18px;
+    }
+
+    .menu-toggle {
+        display: flex;
+    }
+
+    .header-right {
         gap: 10px;
-        padding: 15px;
+    }
+
+    #user-info {
+        font-size: 12px;
     }
 
     .sidebar {
-        width: 100%;
-        height: auto;
-        position: relative;
+        width: 280px;
+        position: fixed;
         top: 0;
+        left: 0;
+        height: 100vh;
+        z-index: 999;
+        transform: translateX(-100%);
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
+    }
+
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 998;
+    }
+
+    .sidebar-overlay.active {
+        display: block;
+    }
+
+    .nav-menu {
+        padding-top: 70px;
+    }
+
+    .nav-item {
+        padding: 15px 20px;
+        font-size: 16px;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+
+    .nav-item span:not(.nav-icon) {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .nav-icon {
+        font-size: 18px;
     }
 
     .content {
         margin-left: 0;
         margin-top: 70px;
-    }
-
-    .header-right {
-        flex-direction: column;
-        width: 100%;
+        padding: 15px;
     }
 
     .dashboard-grid {
         grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .dashboard-card {
+        padding: 20px;
+    }
+
+    .dashboard-card p {
+        font-size: 28px;
     }
 
     .test-navigation {
         flex-direction: column;
+        gap: 10px;
     }
 
-    .logs-filters {
+    .test-navigation button {
+        width: 100%;
+    }
+
+    .logs-filters,
+    .student-results-filters {
         flex-direction: column;
+    }
+
+    .logs-filters label,
+    .student-results-filters label {
+        width: 100%;
+    }
+
+    .calculator-container {
+        grid-template-columns: 1fr;
+    }
+
+    .equation-input {
+        flex-direction: column;
+    }
+
+    .input-group {
+        width: 100%;
+    }
+
+    .profile-container {
+        padding: 20px;
+    }
+
+    .learning-container {
+        padding: 15px;
+    }
+
+    .learning-nav {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .learning-nav button {
+        width: 100%;
+    }
+
+    .user-actions {
+        flex-direction: column;
+    }
+
+    .user-actions button {
+        width: 100%;
+    }
+
+    .modal-content {
+        width: 95%;
+        padding: 20px;
+    }
+
+    .modal-actions {
+        flex-direction: column;
+    }
+
+    .modal-actions button {
+        width: 100%;
+    }
+}
+
+/* Медиа-запросы для маленьких экранов */
+@media (max-width: 480px) {
+    .header {
+        padding: 10px;
+    }
+
+    .header h1 {
+        font-size: 16px;
+    }
+
+    #user-info {
+        font-size: 11px;
+    }
+
+    #logout-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .content {
+        padding: 10px;
+    }
+
+    .content-section h2 {
+        font-size: 20px;
+    }
+
+    .dashboard-card {
+        padding: 15px;
+    }
+
+    .dashboard-card p {
+        font-size: 24px;
+    }
+
+    .course-card,
+    .student-card {
+        padding: 15px;
+    }
+
+    .btn {
+        width: 100%;
+        margin-bottom: 5px;
+    }
+
+    .btn-sm {
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+
+    .nav-item {
+        padding: 8px 12px;
+        font-size: 13px;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+
+    .nav-item span:not(.nav-icon) {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .modal-content {
+        padding: 15px;
+    }
+
+    .confirm-modal .modal-content {
+        max-width: 95%;
+    }
+}
+
+/* Плавное масштабирование */
+* {
+    transition: font-size 0.2s ease, padding 0.2s ease;
+}
+
+/* Отключаем transition для производительности на мобильных */
+@media (max-width: 768px) {
+    * {
+        transition: none;
     }
 }

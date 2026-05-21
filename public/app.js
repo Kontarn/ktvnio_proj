@@ -170,8 +170,41 @@ class LearningApp {
                 if (e.target.id === 'modal') this.closeModal();
             });
         }
+        
+        // Гамбургер-меню
+        const menuToggle = document.getElementById('menu-toggle');
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        
+        if (menuToggle) {
+            menuToggle.addEventListener('click', () => {
+                menuToggle.classList.toggle('active');
+                sidebar.classList.toggle('active');
+                if (sidebarOverlay) sidebarOverlay.classList.toggle('active');
+            });
+        }
+        
+        // Закрытие меню при клике на overlay
+        if (sidebarOverlay) {
+            sidebarOverlay.addEventListener('click', () => {
+                menuToggle.classList.remove('active');
+                sidebar.classList.remove('active');
+                sidebarOverlay.classList.remove('active');
+            });
+        }
+        
+        // Закрытие меню при клике на пункт меню (на мобильных)
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    menuToggle.classList.remove('active');
+                    sidebar.classList.remove('active');
+                    if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+                }
+            });
+        });
     }
-    
+        
     // Проверка активной сессии
     async checkSession() {
         const user = DataManager.getCurrentUser();
@@ -182,7 +215,7 @@ class LearningApp {
             this.showAuthScreen();
         }
     }
-    
+        
     // Обработка входа
     async handleLogin() {
         const usernameInput = document.getElementById('username');
@@ -363,7 +396,7 @@ class LearningApp {
             await this.loadSectionContent(section);
         }
     }
-    
+        
     // Загрузка контента секции
     async loadSectionContent(section) {
         switch(section) {
@@ -637,7 +670,7 @@ class LearningApp {
                 lastAccessed: new Date().toISOString()
             };
         }
-        
+            
         // Сохраняем весь прогресс сразу одним запросом
         const updatedUser = await DataManager.updateUser({ learningProgress });
         
