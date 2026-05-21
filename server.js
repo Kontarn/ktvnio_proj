@@ -3,14 +3,20 @@ const cors = require('cors');
 const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const path = require('path');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 const PORT = 3000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true,
+  exposedHeaders: ['Set-Cookie']
+}));
 app.use(express.json());
 app.use(express.static('public'));
+app.use(cookieParser());
 
 // Инициализация базы данных
 const db = new Database('school.db');
@@ -28,7 +34,8 @@ db.exec(`
     testResults TEXT DEFAULT '[]',
     learningProgress TEXT DEFAULT '{}',
     lastLogin TEXT,
-    lastLogout TEXT
+    lastLogout TEXT,
+    session_id TEXT
   );
 
   CREATE TABLE IF NOT EXISTS courses (
@@ -180,20 +187,54 @@ app.post('/api/login', (req, res) => {
   db.prepare('UPDATE users SET lastLogin = ? WHERE id = ?')
     .run(new Date().toISOString(), user.id);
   
+  // Устанавливаем session_id в cookie (HTTP-only для безопасности)
+  const sessionId = `sess_${user.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  res.cookie('session_id', sessionId, {
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000, // 24 часа
+    sameSite: 'lax'
+  });
+  
+  // Сохраняем session_id в БД для отслеживания
+  db.prepare('UPDATE users SET session_id = ? WHERE id = ?')
+    .run(sessionId, user.id);
+  
   // Возвращаем пользователя без пароля
   const { password: _, ...userWithoutPassword } = user;
   res.json(userWithoutPassword);
 });
 
 app.post('/api/logout', (req, res) => {
-  const { userId } = req.body;
+  const sessionId = req.cookies?.session_id;
   
-  if (userId) {
-    db.prepare('UPDATE users SET lastLogout = ? WHERE id = ?')
-      .run(new Date().toISOString(), userId);
+  if (sessionId) {
+    // Очищаем session_id в БД
+    db.prepare('UPDATE users SET session_id = NULL WHERE session_id = ?')
+      .run(sessionId);
   }
   
+  // Очищаем cookie
+  res.clearCookie('session_id');
+  
   res.json({ success: true });
+});
+
+// Получение текущего пользователя из сессии
+app.get('/api/session', (req, res) => {
+  const sessionId = req.cookies?.session_id;
+  
+  if (!sessionId) {
+    return res.status(401).json({ error: 'Сессия не найдена' });
+  }
+  
+  const user = db.prepare('SELECT * FROM users WHERE session_id = ?').get(sessionId);
+  
+  if (!user) {
+    return res.status(401).json({ error: 'Сессия не найдена' });
+  }
+  
+  const { password: _, ...userWithoutPassword } = user;
+  res.json(userWithoutPassword);
 });
 
 // Получение текущего пользователя
