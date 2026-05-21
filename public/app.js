@@ -207,8 +207,8 @@ class LearningApp {
                 mainScreen.classList.add('active');
             }
             
-            // Показываем главный экран с меню
-            this.showMainScreen();
+            // Показываем главный экран с меню (теперь async)
+            await this.showMainScreen();
             
             // Обновляем время входа в фоне (не блокируем вход)
             DataManager.updateUser({ lastLogin: new Date().toISOString() });
@@ -269,7 +269,7 @@ class LearningApp {
     }
     
     // Показ главного экрана
-    showMainScreen() {
+    async showMainScreen() {
         const user = DataManager.getCurrentUser();
         if (!user) return;
         
@@ -333,10 +333,13 @@ class LearningApp {
         studentTeacherDevItems.forEach(item => {
             item.style.display = isStudentTeacherOrDev ? 'flex' : 'none';
         });
+        
+        // Загружаем дашборд сразу после показа главного экрана
+        await this.loadDashboard();
     }
     
     // Навигация по секциям
-    navigate(section) {
+    async navigate(section) {
         // Обновляем активный пункт меню
         document.querySelectorAll('.nav-item').forEach(item => {
             item.classList.remove('active');
@@ -357,15 +360,15 @@ class LearningApp {
             this.currentSection = section;
             
             // Загружаем контент секции
-            this.loadSectionContent(section);
+            await this.loadSectionContent(section);
         }
     }
     
     // Загрузка контента секции
-    loadSectionContent(section) {
+    async loadSectionContent(section) {
         switch(section) {
             case 'dashboard':
-                this.loadDashboard();
+                await this.loadDashboard();
                 break;
             case 'courses':
                 this.loadCourses();
@@ -398,11 +401,11 @@ class LearningApp {
     }
     
     // Загрузка дашборда
-    loadDashboard() {
+    async loadDashboard() {
         const user = DataManager.getCurrentUser();
         if (!user) return;
         
-        const stats = DataManager.getStats();
+        const stats = await DataManager.getStats();
         
         // Для преподавателя показываем количество его курсов
         if (user.role === 'teacher') {

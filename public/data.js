@@ -241,11 +241,56 @@ const DataManager = {
             courseId: 1,
             duration: 60,
             questions: [
-                { question: 'Вид квадратного уравнения?', options: ['ax + b = 0', 'ax² + bx + c = 0', 'ax³ + bx² + cx + d = 0', 'a/x + b = 0'], correct: 1 },
-                { question: 'Формула дискриминанта:', options: ['D = b² + 4ac', 'D = b² - 4ac', 'D = 2b - a', 'D = √b² - 4ac'], correct: 1 },
-                { question: 'Если D > 0:', options: ['Один корень', 'Два различных корня', 'Нет корней', 'Бесконечно много'], correct: 1 },
-                { question: 'Корни x² - 5x + 6 = 0:', options: ['x₁=2, x₂=3', 'x₁=1, x₂=6', 'x₁=-2, x₂=-3', 'x₁=5, x₂=6'], correct: 0 },
-                { question: 'Теорема Виета x₁ + x₂ =', options: ['-p', 'p', 'q', '-q'], correct: 0 }
+                {
+                    question: 'Какого вида квадратное уравнение?',
+                    options: ['ax + b = 0', 'ax² + bx + c = 0', 'ax³ + bx² + cx + d = 0', 'a/x + b = 0'],
+                    correct: 1
+                },
+                {
+                    question: 'Формула дискриминанта:',
+                    options: ['D = b² + 4ac', 'D = b² - 4ac', 'D = 2b - a', 'D = √b² - 4ac'],
+                    correct: 1
+                },
+                {
+                    question: 'Если D > 0, то уравнение имеет:',
+                    options: ['Один корень', 'Два различных корня', 'Нет корней', 'Бесконечно много корней'],
+                    correct: 1
+                },
+                {
+                    question: 'Сколько корней у уравнения x² - 4x + 4 = 0?',
+                    options: ['0', '1', '2', '3'],
+                    correct: 1
+                },
+                {
+                    question: 'Корни уравнения x² - 5x + 6 = 0:',
+                    options: ['x₁=2, x₂=3', 'x₁=1, x₂=6', 'x₁=-2, x₂=-3', 'x₁=5, x₂=6'],
+                    correct: 0
+                },
+                {
+                    question: 'Что такое приведённое квадратное уравнение?',
+                    options: ['a = 0', 'a = 1', 'b = 0', 'c = 0'],
+                    correct: 1
+                },
+                {
+                    question: 'По теореме Виета: x₁ + x₂ =',
+                    options: ['-p', 'p', 'q', '-q'],
+                    correct: 0
+                },
+                {
+                    question: 'По теореме Виета: x₁ · x₂ =',
+                    options: ['-p', 'p', '-q', 'q'],
+                    correct: 3
+                },
+                {
+                    question: 'Если D = 0, то:',
+                    options: ['Два различных корня', 'Один корень (два совпадающих)', 'Нет корней', 'Три корня'],
+                    correct: 1
+                },
+                {
+                    question: 'Коэффициент a в уравнении 3x² + 2x - 1 = 0 равен:',
+                    options: ['3', '2', '-1', '0'],
+                    correct: 0
+                }
             ]
         };
     },
