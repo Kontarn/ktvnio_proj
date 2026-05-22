@@ -48,6 +48,91 @@
 - **npm** версии 6.0.0 или выше
 - Современный браузер с поддержкой ES6+ (Chrome, Firefox, Edge, Safari)
 
+## Установка
+
+### Windows
+
+#### 1. Установка Node.js и npm
+
+1. Скачайте установщик Node.js с официального сайта: [https://nodejs.org/](https://nodejs.org/)
+2. Рекомендуется версия **LTS** (Long Term Support)
+3. Запустите установщик и следуйте инструкциям
+4. После установки проверьте в командной строке (cmd или PowerShell):
+   ```bash
+   node --version
+   npm --version
+   ```
+
+#### 2. Клонирование репозитория
+
+```bash
+git clone https://github.com/ваш-username/ваш-репозиторий.git
+cd ваш-репозиторий
+```
+
+Или скачайте архив проекта и распакуйте его в удобную папку.
+
+### Linux
+
+#### 1. Установка Node.js и npm
+
+**Ubuntu/Debian:**
+```bash
+# Установка через официальный репозиторий NodeSource
+curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Проверка установки
+node --version
+npm --version
+```
+
+**CentOS/RHEL/Fedora:**
+```bash
+# Установка через dnf (Fedora) или yum (CentOS/RHEL)
+sudo dnf install -y nodejs npm
+# или
+sudo yum install -y nodejs npm
+
+# Проверка установки
+node --version
+npm --version
+```
+
+#### 2. Клонирование репозитория
+
+```bash
+git clone https://github.com/ваш-username/ваш-репозиторий.git
+cd ваш-репозиторий
+```
+
+## 3. Установка зависимостей
+
+```bash
+npm install
+```
+
+Если возникают ошибки с правами доступа, используйте:
+```bash
+npm install --unsafe-perm=true
+```
+
+## 4. Запуск сервера
+
+```bash
+npm start
+```
+
+Для запуска в фоновом режиме:
+```bash
+npm start &
+```
+
+Или используйте `nohup`:
+```bash
+nohup npm start > server.log 2>&1 &
+```
+
 ## Зависимости
 
 Проект использует следующие npm-пакеты (указаны в `package.json`):
@@ -63,33 +148,10 @@
 
 **nodemon** — утилита для автоматической перезагрузки сервера при разработке (devDependencies)
 
-## Установка и запуск
+## Доступ к приложению
 
-### 1. Клонировать репозиторий
-```bash
-git clone https://github.com/ваш-username/ваш-репозиторий.git
-cd ваш-репозиторий
-```
-
-### 2. Установить зависимости
-```bash
-npm install
-```
-
-### 3. Запустить сервер
-```bash
-npm start
-```
-
-Или в фоновом режиме:
-```bash
-npm start &
-```
-
-Сервер запустится на **http://localhost:3000**
-
-### 4. Открыть в браузере
-Откройте **http://localhost:3000** в любом современном браузере
+После запуска сервера откройте в браузере:
+- **URL:** http://localhost:3000
 
 ## Функциональность
 
@@ -140,6 +202,112 @@ npm start &
 
 - **LocalStorage** — только для хранения текущей сессии пользователя (авторизация)
 
+## Схема базы данных
+
+```
+┌─────────────────────┐     ┌─────────────────────┐
+│       users         │     │      courses        │
+├─────────────────────┤     ├─────────────────────┤
+│ id (PK)             │     │ id (PK)             │
+│ username (UNIQUE)   │     │ title               │
+│ password            │     │ description         │
+│ role                │     │ instructor          │
+│ roleName            │     │ duration            │
+│ enrolledCourses     │     │ testId              │
+│ testResults         │     └─────────────────────┘
+│ learningProgress    │                │
+│ lastLogin           │                │
+│ lastLogout          │                │
+│ session_id          │                ▼
+└─────────────────────┘     ┌─────────────────────┐
+           │                │       topics        │
+           │                ├─────────────────────┤
+           │                │ id (PK)             │
+           │                │ courseId (FK) ──────┼──> courses.id
+           │                │ orderNum            │
+           │                │ title               │
+           │                │ content             │
+           │                └─────────────────────┘
+           │
+           ▼
+┌─────────────────────┐     ┌─────────────────────┐
+│    activity_logs    │     │       tests         │
+├─────────────────────┤     ├─────────────────────┤
+│ id (PK, AUTOINC)    │     │ id (PK)             │
+│ userId (FK) ────────┼──>  │ courseId (FK) ──────┼──> courses.id
+│ username            │     │ questions           │
+│ action              │     │ duration            │
+│ description         │     └─────────────────────┘
+│ timestamp           │
+└─────────────────────┘
+```
+
+### Таблицы
+
+#### `users` — Пользователи системы
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `id` | INTEGER PRIMARY KEY | Уникальный идентификатор пользователя |
+| `username` | TEXT UNIQUE NOT NULL | Логин пользователя |
+| `password` | TEXT NOT NULL | Хешированный пароль (bcrypt) |
+| `role` | TEXT NOT NULL | Роль: `listener`, `teacher`, `developer`, `support` |
+| `roleName` | TEXT NOT NULL | Отображаемое название роли |
+| `enrolledCourses` | TEXT DEFAULT '[]' | JSON-массив ID курсов, на которые записан пользователь |
+| `testResults` | TEXT DEFAULT '[]' | JSON-массив результатов тестов |
+| `learningProgress` | TEXT DEFAULT '{}' | JSON-объект прогресса изучения тем |
+| `lastLogin` | TEXT | Время последнего входа (ISO 8601) |
+| `lastLogout` | TEXT | Время последнего выхода (ISO 8601) |
+| `session_id` | TEXT | ID сессии для cookie-аутентификации |
+
+#### `courses` — Курсы обучения
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `id` | INTEGER PRIMARY KEY | Уникальный идентификатор курса |
+| `title` | TEXT NOT NULL | Название курса |
+| `description` | TEXT | Описание курса |
+| `instructor` | TEXT | Имя преподавателя |
+| `duration` | TEXT | Продолжительность курса |
+| `testId` | INTEGER | ID связанного теста |
+
+#### `topics` — Темы курса
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `id` | INTEGER PRIMARY KEY | Уникальный идентификатор темы |
+| `courseId` | INTEGER NOT NULL | ID курса (внешний ключ → `courses.id`) |
+| `orderNum` | INTEGER NOT NULL | Порядковый номер темы в курсе |
+| `title` | TEXT NOT NULL | Название темы |
+| `content` | TEXT NOT NULL | HTML-содержимое темы |
+
+#### `tests` — Тесты курсов
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `id` | INTEGER PRIMARY KEY | Уникальный идентификатор теста |
+| `courseId` | INTEGER NOT NULL | ID курса (внешний ключ → `courses.id`) |
+| `questions` | TEXT NOT NULL | JSON-массив вопросов теста |
+| `duration` | INTEGER DEFAULT 60 | Длительность теста в минутах |
+
+#### `activity_logs` — Журнал событий
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `id` | INTEGER PRIMARY KEY AUTOINCREMENT | Уникальный идентификатор записи |
+| `userId` | INTEGER NOT NULL | ID пользователя (внешний ключ → `users.id`) |
+| `username` | TEXT NOT NULL | Имя пользователя (для удобства фильтрации) |
+| `action` | TEXT NOT NULL | Тип действия (login, logout, enroll, topic, test и др.) |
+| `description` | TEXT | Описание действия |
+| `timestamp` | TEXT NOT NULL | Время события (ISO 8601) |
+
+### Связи
+
+- `topics.courseId` → `courses.id` (многие-к-одному)
+- `tests.courseId` → `courses.id` (один-к-одному)
+- `activity_logs.userId` → `users.id` (многие-к-одному)
+- `users.enrolledCourses` содержит JSON-массив `courses.id` (многие-ко-многим, реализовано через JSON)
+
 ## Технологии
 
 - **Backend**: Node.js + Express
@@ -151,14 +319,30 @@ npm start &
 ## Разработка
 
 ### Запуск в режиме разработки
+
+Сервер автоматически создаст базу данных `school.db` при первом запуске.
+
 ```bash
 npm start
 ```
 
-Сервер автоматически создаст базу данных `school.db` при первом запуске.
-
 ### Пересоздание базы данных
-Если нужно сбросить все данные:
+
+Если нужно сбросить все данные и создать базу заново:
+
+**Windows (cmd):**
+```bash
+del school.db
+npm start
+```
+
+**Windows (PowerShell):**
+```powershell
+Remove-Item school.db
+npm start
+```
+
+**Linux/macOS:**
 ```bash
 rm school.db
 npm start
