@@ -499,23 +499,27 @@ app.post('/api/logs', (req, res) => {
 app.get('/api/logs', (req, res) => {
   const { userId, action } = req.query;
   
-  let query = 'SELECT * FROM activity_logs ORDER BY timestamp DESC';
+  const whereClauses = [];
   const params = [];
   
   if (userId && userId !== 'all') {
-    query += ' WHERE userId = ?';
+    whereClauses.push('userId = ?');
     params.push(parseInt(userId));
   }
   
   if (action && action !== 'all') {
-    if (query.includes('WHERE')) {
-      query += ' AND action = ?';
-    } else {
-      query += ' WHERE action = ?';
-    }
+    whereClauses.push('action = ?');
     params.push(action);
   }
   
+  let query = 'SELECT * FROM activity_logs';
+
+  if (whereClauses.length > 0) {
+    query += ' WHERE ' + whereClauses.join(' AND ');
+  }
+
+  query += ' ORDER BY timestamp DESC';
+
   const logs = db.prepare(query).all(...params);
   res.json(logs);
 });
