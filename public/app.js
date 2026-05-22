@@ -959,14 +959,32 @@ class LearningApp {
             const testCount = testResults ? testResults.length : 0;
             const isCurrentUser = user.id === currentUser.id;
             
+            // Определяем статус курса для listener
+            let courseStatus = '—';
+            if (user.role === 'listener') {
+                if (!isEnrolled) {
+                    courseStatus = '<span style="color: #999;">Не записан</span>';
+                } else if (testResults && testResults.length > 0) {
+                    const lastResult = testResults[testResults.length - 1];
+                    if (lastResult.percentage >= 60) {
+                        courseStatus = `<span style="color: #28a745;">✅ Пройден (${lastResult.percentage}%)</span>`;
+                    } else {
+                        courseStatus = `<span style="color: #ffc107;">⚠️ Не пройден (${lastResult.percentage}%)</span>`;
+                    }
+                } else {
+                    courseStatus = '<span style="color: #17a2b8;">📚 Изучает</span>';
+                }
+            }
+            
             let actionButtons = '';
+            let courseManagement = '';
             
             // Developer может удалять всех (кроме себя)
             if (isDeveloper && user.id !== currentUser.id) {
                 let deleteButton = `<button class="btn btn-danger btn-sm" onclick="app.deleteUser(${user.id})">🗑️ Удалить</button>`;
                 
                 if (user.role === 'listener') {
-                    actionButtons = `
+                    courseManagement = `
                         <div class="user-actions">
                             ${isEnrolled ? `
                                 <button class="btn btn-danger btn-sm" onclick="app.unsubscribeUser(${user.id}, 1)">
@@ -979,9 +997,9 @@ class LearningApp {
                                     Сбросить всё
                                 </button>
                             ` : '<span style="color: #999; font-size: 12px;">Не записан на курсы</span>'}
-                            ${deleteButton}
                         </div>
                     `;
+                    actionButtons = `<div class="user-actions">${deleteButton}</div>`;
                 } else {
                     // Для teacher, support, developer - только удаление
                     actionButtons = `<div class="user-actions">${deleteButton}</div>`;
@@ -993,7 +1011,7 @@ class LearningApp {
                 let deleteButton = `<button class="btn btn-danger btn-sm" onclick="app.deleteUser(${user.id})">🗑️ Удалить</button>`;
                 
                 if (user.role === 'listener') {
-                    actionButtons = `
+                    courseManagement = `
                         <div class="user-actions">
                             ${isEnrolled ? `
                                 <button class="btn btn-danger btn-sm" onclick="app.unsubscribeUser(${user.id}, 1)">
@@ -1006,9 +1024,9 @@ class LearningApp {
                                     Сбросить всё
                                 </button>
                             ` : '<span style="color: #999; font-size: 12px;">Не записан на курсы</span>'}
-                            ${deleteButton}
                         </div>
                     `;
+                    actionButtons = `<div class="user-actions">${deleteButton}</div>`;
                 } else {
                     // Для teacher - только удаление
                     actionButtons = `<div class="user-actions">${deleteButton}</div>`;
@@ -1024,6 +1042,7 @@ class LearningApp {
                     <td>${testCount}</td>
                     <td>${user.lastLogin ? new Date(user.lastLogin).toLocaleString('ru-RU') : '—'}</td>
                     <td>${actionButtons}</td>
+                    <td>${courseManagement}</td>
                 </tr>
             `;
         }).join('');
@@ -1039,6 +1058,7 @@ class LearningApp {
                         <th>Тесты</th>
                         <th>Последний вход</th>
                         ${(isDeveloper || isSupport) ? '<th>Действия</th>' : ''}
+                        <th>Управление курсом</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1047,7 +1067,7 @@ class LearningApp {
             </table>
         `;
     }
-        
+    
     // Настройка формы регистрации
     async setupRegistrationForm() {
         const roleSelect = document.getElementById('reg-role');
@@ -1165,7 +1185,7 @@ class LearningApp {
                     userFilter.appendChild(option);
                 });
             }
-            
+                
             const userId = document.getElementById('log-user-filter').value;
             const actionType = document.getElementById('log-type-filter').value;
             

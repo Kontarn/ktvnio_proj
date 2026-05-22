@@ -800,6 +800,7 @@ body {
     border-radius: 10px;
     font-size: 12px;
     font-weight: bold;
+    white-space: nowrap;
 }
 
 .role-listener {
@@ -820,6 +821,7 @@ body {
 .role-support {
     background-color: #f8d7da;
     color: #721c24;
+    white-space: nowrap;
 }
 
 /* Журнал событий */
