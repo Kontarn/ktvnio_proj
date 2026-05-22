@@ -322,6 +322,15 @@ body {
     transition: transform 0.3s ease;
 }
 
+/* Контент - с отступом для sidebar */
+.content {
+    margin-left: clamp(200px, 15vw, 250px);
+    margin-top: 70px;
+    padding: 30px;
+    min-height: calc(100vh - 70px);
+    width: calc(100% - clamp(200px, 15vw, 250px));
+}
+
 .nav-menu {
     list-style: none;
     padding: 20px 0;
@@ -481,8 +490,10 @@ body {
     padding: 30px;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    width: 800px;
-    margin: 0 auto;
+    width: 100%;
+    margin: 0;
+    box-sizing: border-box;
+    max-width: none;
 }
 
 #learning-content {
@@ -493,6 +504,7 @@ body {
     width: 100%;
     margin: 0;
     box-sizing: border-box;
+    max-width: none;
 }
 
 .learning-nav {
@@ -578,6 +590,8 @@ body {
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     text-align: center;
+    width: 100%;
+    max-width: none;
 }
 
 .test-header {
@@ -604,6 +618,8 @@ body {
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     margin-bottom: 20px;
+    width: 100%;
+    max-width: none;
 }
 
 .question-text {
@@ -660,6 +676,8 @@ body {
     padding: 30px;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: none;
 }
 
 .results-summary {
@@ -681,15 +699,19 @@ body {
 /* Результаты */
 #results-content {
     background: white;
-    padding: 25px;
+    padding: 0;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: none;
 }
 
 .results-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 20px;
+    margin: 0;
+    max-width: none !important;
+    table-layout: fixed;
 }
 
 .results-table th,
@@ -697,6 +719,8 @@ body {
     padding: 12px;
     text-align: left;
     border-bottom: 1px solid #ddd;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .results-table th {
@@ -709,17 +733,34 @@ body {
 }
 
 /* Пользователи */
+.register-user-form {
+    width: 100%;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.register-user-form h3 {
+    margin-bottom: 15px;
+    color: #2c3e50;
+}
+
 #users-list {
     background: white;
-    padding: 25px;
+    padding: 0;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: none;
 }
 
 .users-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 20px;
+    margin: 0;
+    max-width: none !important;
+    table-layout: fixed;
 }
 
 .users-table th,
@@ -727,6 +768,8 @@ body {
     padding: 12px;
     text-align: left;
     border-bottom: 1px solid #ddd;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .users-table th {
@@ -790,6 +833,7 @@ body {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 20px;
+    width: 100%;
 }
 
 .calculator-form {
@@ -797,6 +841,7 @@ body {
     padding: 30px;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    max-width: none;
 }
 
 .calculator-form h3 {
@@ -842,6 +887,8 @@ body {
     padding: 30px;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: none;
 }
 
 .solution-result h3 {
@@ -905,9 +952,11 @@ body {
 
 .student-results-content {
     background: white;
-    padding: 25px;
+    padding: 0;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: none;
 }
 
 .student-card {
@@ -978,15 +1027,19 @@ body {
 
 #logs-content {
     background: white;
-    padding: 25px;
+    padding: 0;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: none;
 }
 
 .logs-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 20px;
+    margin: 0;
+    max-width: none;
+    table-layout: fixed;
 }
 
 .logs-table th,
@@ -994,6 +1047,8 @@ body {
     padding: 12px;
     text-align: left;
     border-bottom: 1px solid #ddd;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .logs-table th {
@@ -1044,7 +1099,8 @@ body {
     padding: 30px;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    max-width: 600px;
+    width: 100%;
+    max-width: none;
 }
 
 .profile-info {
@@ -1204,15 +1260,25 @@ body {
 .content {
     margin-left: clamp(200px, 15vw, 280px);
     padding: clamp(15px, 2vw, 30px);
+    width: calc(100% - clamp(200px, 15vw, 280px));
 }
 
 /* Адаптивные таблицы */
 .users-table,
 .results-table,
 .logs-table {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
+    width: 100%;
+    table-layout: fixed;
+}
+
+.users-table th,
+.users-table td,
+.results-table th,
+.results-table td,
+.logs-table th,
+.logs-table td {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 /* Адаптивные карточки */
@@ -1277,8 +1343,8 @@ body {
 
 /* Адаптивное обучение */
 .learning-container {
-    width: min(95%, 800px);
-    margin: 0 auto;
+    width: 100%;
+    margin: 0;
     padding: clamp(15px, 2vw, 30px);
 }
 
@@ -1290,7 +1356,10 @@ body {
     font-size: clamp(14px, 1.2vw, 16px);
 }
 
-/* Адаптивные фильтры */
+/* Адаптивный калькулятор */
+.calculator-container {
+    grid-template-columns: repeat(auto-fit, minmax(min(400px, 100%), 1fr));
+}
 .logs-filters,
 .student-results-filters {
     flex-wrap: wrap;
@@ -1349,6 +1418,7 @@ body {
 
     .content {
         margin-left: 220px;
+        width: calc(100% - 220px);
     }
 
     .calculator-container {
@@ -1356,7 +1426,7 @@ body {
     }
 
     .learning-container {
-        width: 95%;
+        width: 100%;
     }
 }
 
@@ -1394,10 +1464,6 @@ body {
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
     }
 
-    .sidebar.active {
-        transform: translateX(0);
-    }
-
     .sidebar-overlay {
         display: none;
         position: fixed;
@@ -1411,6 +1477,10 @@ body {
 
     .sidebar-overlay.active {
         display: block;
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
     }
 
     .nav-menu {
@@ -1440,6 +1510,15 @@ body {
         margin-left: 0;
         margin-top: 70px;
         padding: 15px;
+        width: 100%;
+    }
+
+    .sidebar {
+        transform: translateX(-100%);
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
     }
 
     .dashboard-grid {
